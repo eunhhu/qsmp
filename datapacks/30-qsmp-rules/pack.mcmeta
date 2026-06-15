@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "id": "qsmp_rules",
+    "min_format": 101,
+    "max_format": 101,
+    "description": "QSMP persistent balance and quality-of-life rules"
+  }
+}

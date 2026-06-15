@@ -1,0 +1,51 @@
+NamesThatDisable:
+  - Optimize
+
+BlocksThatDisable:
+  - EMERALD_BLOCK
+
+WorkstationsThatDisable:
+  - COMPOSTER
+  - SMOKER
+  - BARREL
+  - LOOM
+  - BLAST_FURNACE
+  - BREWING_STAND
+  - CAULDRON
+  - FLETCHING_TABLE
+  - CARTOGRAPHY_TABLE
+  - LECTERN
+  - SMITHING_TABLE
+  - STONECUTTER
+  - GRINDSTONE
+
+RestockTimes:
+  times:
+    - 1000
+    - 13000
+
+ai-toggle-cooldown: 600
+RadiusLimit: 50
+RadiusDefault: 25
+
+toggleableoptions:
+  preventtrading: false
+  usenametags: false
+  userenaming: true
+  useblocks: false
+  useworkstations: false
+  workstationcheckradius: 2
+  silence_villagers: false
+
+messages:
+  no-permission: "&cYou don't have permission to use this command."
+  reload-message: "&aPlugin successfully reloaded."
+  cooldown-ai-message: "&cYou can toggle this villager's AI again in %avlminutes% minutes and %avlseconds% seconds."
+  cooldown-levelup-message: "&cThe villager is currently leveling up! You can use the villager again in %avlseconds% seconds."
+  next-restock: "&cThe next restock for the villager will be in %avlrestockmin% minutes and %avlrestocksec% seconds."
+  optimize-command-usage: "&cCorrect Usage is /avloptimize <radius>"
+  unoptimize-command-usage: "&cCorrect Usage is /avlunoptimize <radius>"
+  radius-limit: "&cThe radius you tried is too big. Radius limit is %avlradiuslimit% blocks."
+  VillagerMustBeDisabled: "&cYou need to disable the villager before you can trade with it"
+  searching-radius: "&aSearching radius of %avlradius% blocks."
+  radius-invalid: "&cRadius must be a valid Integer."

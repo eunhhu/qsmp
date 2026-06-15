@@ -1,0 +1,302 @@
+# TrialChamberPro Configuration v1.0
+
+# Database settings
+database:
+  type: SQLITE # SQLITE or MYSQL
+  # MySQL settings (only used if type is MYSQL)
+  host: localhost
+  port: 3306
+  database: trialchamberpro
+  username: root
+  password: ""
+  pool-size: 10
+
+# Global chamber settings
+global:
+  # Default reset interval in seconds
+  # Set to 0 to disable automatic resets (manual reset only via /tcp reset or GUI)
+  # Common values: 86400 (daily), 172800 (48h), 604800 (weekly)
+  default-reset-interval: 172800
+  reset-warning-times: [300, 60, 30] # Warnings in seconds before reset
+  reset-complete-alert: true # Set to false to suppress the server-wide broadcast when any chamber finishes resetting
+  teleport-players-on-reset: true
+  teleport-location: EXIT_POINT # EXIT_POINT, OUTSIDE_BOUNDS, or WORLD_SPAWN
+  async-block-placement: true
+  blocks-per-tick: 500
+  auto-snapshot-on-register: true
+  # Throttle for chamber resets. When many chambers come due at once (e.g. lots of
+  # auto-discovered chambers sharing one interval), these stop them all restoring
+  # simultaneously and tanking TPS.
+  max-concurrent-resets: 1      # how many chambers may reset at the same time
+  reset-stagger-seconds: 5      # minimum gap between one reset finishing and the next starting
+  # When true, chambers that come due for an automatic reset are NOT reset
+  # immediately — they're parked in a queue and online admins are notified.
+  # An operator confirms them with /tcp reset confirm <chamber> or
+  # /tcp reset confirm all (then they run staggered per the settings above).
+  # /tcp reset pending lists what's waiting.
+  reset-require-confirmation: false
+
+  # Mute the vanilla console line "Trial Spawner at BlockPos{...} has no detected
+  # players". TCP's reset fixes stop new occurrences, but spawners already broken
+  # before updating keep logging it every tick until their chamber next resets.
+  suppress-trial-spawner-spam: true
+
+  # Use FastAsyncWorldEdit to place blocks during SCHEDULED (automatic) resets, which
+  # smooths out the lag of large restores. Requires FastAsyncWorldEdit; ignored on
+  # Folia (FAWE has no Folia support) and for manual /tcp reset (those keep the
+  # batched restore so WorldEdit //undo still works). Falls back automatically.
+  use-fawe: false
+
+# Generation settings
+generation:
+  # Maximum number of blocks allowed when generating/registering a chamber region
+  # Keep this manageable for your server hardware
+  max-volume: 750000
+  blocks:
+    # When using /tcp generate blocks <amount>, we may need to round up to reach minimum viable dimensions.
+    # This is the maximum number of extra blocks allowed beyond the requested amount.
+    rounding-allowance: 1000
+
+# Vault settings
+vaults:
+  per-player-loot: true
+
+  # Separate cooldowns for normal and ominous vaults
+  # Set to 0 for vanilla behavior (once opened, stays locked until chamber reset)
+  # Set to a positive number for time-based cooldowns (e.g., 24 = 24 hours)
+  normal-cooldown-hours: 0
+  ominous-cooldown-hours: 0
+
+  # Key-to-reopen: let players open an already-used vault again by paying this
+  # many matching trial keys IN TOTAL (a fresh open costs 1; so 1 = reopen at
+  # the same price, 2 = one extra key, etc.). 0 disables — players wait for
+  # the cooldown / chamber reset as usual. Keys must be held in the main hand.
+  reopen-cost-keys: 0
+
+  # Visual indicators
+  show-cooldown-particles: true
+  particles:
+    normal-available: VILLAGER_HAPPY
+    normal-cooldown: SMOKE_NORMAL
+    ominous-available: SOUL_FIRE_FLAME
+    ominous-cooldown: SOUL
+
+  # Sounds
+  play-sound-on-open: true
+  sounds:
+    normal-open: BLOCK_VAULT_OPEN_SHUTTER
+    ominous-open: BLOCK_VAULT_OPEN_SHUTTER
+    cooldown: BLOCK_NOTE_BLOCK_BASS
+
+  # Vanilla-style loot ejection: drop items from the vault block instead of
+  # placing them directly into the player's inventory.
+  drop-loot-at-vault: false
+  # If true, only the player who opened the vault can pick up the dropped
+  # items. After drop-loot-owner-grace-seconds, anyone can pick them up so
+  # items don't linger forever if the owner logs off. 0 = owner-locked until
+  # the item despawns.
+  drop-loot-owner-only: true
+  drop-loot-owner-grace-seconds: 30
+
+# Protection settings
+protection:
+  enabled: true
+  prevent-block-break: true
+  prevent-block-place: true
+  prevent-container-access: false
+  allow-pvp: true
+  prevent-mob-griefing: true
+  worldguard-integration: true
+
+  # Block placing functioning VAULT blocks outside registered chambers. A wild
+  # vault is a permanent vanilla loot dispenser the plugin can't manage (no
+  # per-player tracking, resets, or loot tables). Players with the
+  # tcp.bypass.vaultplace permission (default: op) can always place them.
+  block-wild-vault-placement: true
+  # Auto-pause: if enough vaults or trial spawners inside a registered chamber are
+  # destroyed, automatically pause the chamber so its record stays in the database
+  # but all active behavior (resets, protection, tracking, vault interactions) is
+  # suspended. Useful for "hardcore" servers where griefing protection is disabled.
+  # Paused chambers can be manually resumed at any time via /tcp resume <name> or the GUI.
+  auto-pause-on-destruction: false
+  # How many critical blocks (vaults + trial spawners combined) must be destroyed
+  # inside a chamber before auto-pause fires. Minimum effective value is 1.
+  # A low number (1-2) catches individual mischief; a higher number (6-10) targets
+  # deliberate full-chamber demolition. The counter resets whenever the chamber is
+  # paused or resumed, so a resumed chamber always starts counting from zero again.
+  auto-pause-threshold: 6
+# Trial Key settings
+trial-keys:
+  fix-paper-bugs: true
+  prevent-duplication: true # Minimum protection. For free BIC protection, use DupeTrace https://modrinth.com/plugin/dupetrace
+  max-stack-size: 16
+  validate-key-type: true  # Ensure normal keys only open normal vaults
+
+# Reset settings
+reset:
+  clear-ground-items: true
+  remove-spawner-mobs: true
+  remove-non-chamber-mobs: false
+  # Snapshots skip air to save space, so on their own they can't undo blocks a
+  # player ADDED into empty cells (lava, cobble, etc.). When true, reset also
+  # clears any block inside the chamber that isn't part of the snapshot back to
+  # air, so player additions don't persist. Set false if you intentionally let
+  # players build inside chambers.
+  clear-added-blocks: true
+  # CRITICAL: Reset trial spawner state (clears tracked players).
+  # When enabled, trial spawners will drop keys again after chamber reset.
+  # Without this, spawners "remember" players who already completed them and won't give keys.
+  # Vanilla behavior: 50% chance to drop a trial key for each player after all mobs are defeated.
+  reset-trial-spawners: true
+  reset-ominous-spawners: true  # Convert ominous spawners back to normal on reset
+  clear-trial-omen-effect: true
+  reset-vault-cooldowns: true  # Reset player vault cooldowns on chamber reset (REQUIRED for vanilla behavior)
+  # Trial spawner cooldown configuration
+  # This controls how long spawners stay inactive after players complete a wave
+  # Set to -1 to use vanilla default (30 minutes / 36000 ticks)
+  # Set to 0 to disable cooldown (spawners reactivate immediately)
+  # Set to a positive number for custom cooldown in minutes
+  spawner-cooldown-minutes: -1
+
+  # Wild spawner cooldown (spawners OUTSIDE of registered chambers)
+  # Same values as spawner-cooldown-minutes:
+  # -1 = vanilla default (30 minutes), 0 = no cooldown, 1-60 = custom minutes
+  # This allows controlling cooldown for unregistered Trial Chambers server-wide
+  wild-spawner-cooldown-minutes: -1
+
+  # v1.3.0 — Custom mob provider spawner-key drops
+  # When a wave is driven by a non-vanilla mob provider (e.g. MythicMobs), vanilla's
+  # state machine cannot issue Trial Keys on completion, so the plugin drops them
+  # itself: one key per unique participating player, above the spawner block.
+  # Drops are owner-locked for this many seconds before anyone can pick them up.
+  # Set to 0 to keep drops owner-locked until they despawn naturally.
+  # Players with permission `tcp.bypass.droplock` can always pick up.
+  spawner-key-drop-owner-grace-seconds: 30
+
+# Performance
+performance:
+  cache-chamber-lookups: true
+  cache-duration-seconds: 300
+  async-database-operations: true
+  time-tracking-interval: 300  # Flush time stats every 5 minutes (seconds)
+  use-folialib: true  # Enable for Folia compatibility
+
+# Statistics
+statistics:
+  enabled: true
+  track-time-spent: true
+  leaderboard-update-interval: 3600  # Update leaderboards hourly (seconds)
+  top-players-count: 10
+
+# Loot settings
+loot:
+  # Apply LUCK potion effect to loot generation
+  # When enabled, players with the LUCK effect get bonus loot rolls
+  # Each level of LUCK adds +1 extra roll (e.g., LUCK II = +2 rolls)
+  apply-luck-effect: false
+
+  # Maximum number of loot pools per loot table
+  # Each pool rolls independently (like vanilla's common/rare/unique system)
+  # GUI will limit pool editing to this number
+  max-pools-per-table: 5
+
+# Spawner Wave System
+# Tracks trial spawner waves with boss bar progress display
+spawner-waves:
+  enabled: true
+  show-boss-bar: true           # Show boss bar with wave progress
+  detection-radius: 20          # Radius to detect players for boss bar display
+  # Distance at which a player is REMOVED from a boss bar they were previously added to.
+  # Should be larger than detection-radius to provide hysteresis (prevents flicker at the edge).
+  # Default: 32 blocks — the boss bar will hide when you walk this far from the spawner.
+  remove-distance: 32
+  award-stats: true             # Track wave kills in player statistics
+  completion-message: true      # Send message when wave is complete
+  # Glow outline on active trial spawners (v1.2.27, fixed v1.5.4)
+  # When true, spawns an invisible shulker at each active spawner with the GLOWING effect
+  # applied, producing a colored block outline that's visible through walls — helps players
+  # locate the remaining active spawners in large chambers. Cleared automatically when the
+  # wave completes, the spawner enters cooldown, or the chamber is reset.
+  # NOTE: in v1.2.27..v1.5.3 this used an Interaction entity which is silently glow-immune;
+  #       the feature has only actually rendered visible outlines from v1.5.4 onward.
+  glow-active-spawners: true
+  glow-color-normal: "#FFFF55"  # Outline color for normal trial spawners (hex RGB)
+  glow-color-ominous: "#A020F0" # Outline color for ominous trial spawners (hex RGB)
+
+  # Glow mode (v1.5.4) — controls *which* spawners glow when glow-active-spawners is true.
+  #   wave-active        (default) — only the spawner with the currently-active wave glows.
+  #                                   Restores per-wave focus, easier on entity counts.
+  #   chamber-remaining            — when any wave starts in a chamber, every UNCLEARED
+  #                                   spawner in that chamber glows for the rest of the
+  #                                   cycle. Solves "where's the spawner I haven't done
+  #                                   yet?" — recommended for premium difficulty modules
+  #                                   (TCP-MythicTrials's HUD pairs with this).
+  glow-mode: "wave-active"
+
+# Spectator Mode
+# Allows players to spectate chambers after death
+spectator-mode:
+  enabled: true
+  offer-timeout: 30             # Seconds before spectate offer expires
+  restrict-to-chamber: true     # Keep spectators within chamber bounds
+  boundary-buffer: 10           # Extra blocks allowed outside chamber
+  allow-solo-spectate: false    # Allow spectating empty chambers
+
+# Auto-discovery of naturally-generated Trial Chambers
+# When enabled, the plugin watches for chunk loads and auto-registers
+# chambers the first time one of their vaults/spawners enters a loaded chunk.
+# Opt-in because it's a behavioral change; players' worlds may have
+# pre-1.21 builds that resemble chamber structural blocks.
+discovery:
+  enabled: true                    # Register natural chambers as players discover them
+  max-radius-xz: 60                # BFS expansion cap on horizontal axes
+  max-radius-y: 45                 # BFS expansion cap on vertical axis
+  min-vaults-plus-spawners: 2      # Reject AABBs with fewer total vaults + spawners
+  max-center-y: 10                 # Reject if AABB center Y > this (chambers gen deep underground)
+  auto-snapshot: true              # Required so discovered chambers can reset automatically
+  notify-ops: true                 # Broadcast registration to players with tcp.discovery.notify
+  cooldown-seconds: 300            # Per-region debounce after a successful or failed discovery
+  pending-retry-seconds: 30        # How long to keep a partial-load seed pending while adjacent chunks load
+  merge-distance-blocks: 250       # If a newly-discovered region's AABB is within this many blocks (Chebyshev,
+                                   # edge-to-edge) of an already-registered chamber in the same world, the region
+                                   # is merged into the existing chamber instead of being registered separately.
+                                   # Vanilla chambers are typically ~500 blocks apart, so 250 keeps real neighbours
+                                   # separate while still folding partial detections (e.g. radius-capped BFS) together.
+                                   # Set to -1 to disable merging entirely.
+  max-merged-volume: 1500000       # Hard cap on the post-merge bounding-box volume (blocks). Prevents pathological
+                                   # daisy-chaining from swallowing huge regions into a single logical chamber.
+
+  # v1.5.1: Nag operators when discovered chambers are missing a snapshot.
+  # Without a snapshot the chamber cannot be reset, so this is actionable.
+  # Notifications go to anyone with `tcp.admin.snapshot`.
+  snapshot-reminder:
+    enabled: true
+    on-join: true                  # Ping an admin individually when they log in
+    interval-minutes: 30           # Periodic console summary + admin chat ping (0 disables periodic only)
+
+# Per-player chamber container loot (v1.5.7, opt-in). When enabled, every
+# player who opens a chest / trapped chest / barrel inside a registered
+# chamber gets their OWN copy of its contents (Lootr-style) — the second
+# player into a chamber no longer finds gutted chests. The real container is
+# never modified (it's the pristine template); per-player copies reset with
+# the chamber. Hopper automation against chamber containers is blocked while
+# enabled. Containers placed by players inside chambers keep vanilla
+# behaviour. Admins with tcp.admin.containers can SNEAK-click to open the
+# real container and edit the template.
+chests:
+  per-player-loot: true
+
+# Anonymous usage metrics (bStats). No player data is collected — just
+# aggregate config/feature usage that guides development priorities.
+# Server-wide opt-out also available in plugins/bStats/config.yml.
+metrics:
+  enabled: true
+
+# Debug mode
+debug:
+  verbose-logging: false
+  # When true, skip the startup check that compares your messages.yml against
+  # the JAR-bundled defaults. Leave this false unless the warning is noisy and
+  # you have a reason to ignore it — when keys are missing, GUI tooltips and
+  # chat messages render as literal "<missing: key.name>" text.
+  skip-messages-schema-check: false
