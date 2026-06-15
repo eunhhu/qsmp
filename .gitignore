@@ -1,0 +1,63 @@
+# Purpur runtime
+server.jar
+server.jar.download
+.server-running
+.purpur-install
+.managed-datapacks
+.console_history
+runtime/
+
+# Generated server data
+cache/
+libraries/
+logs/
+versions/
+world/
+world_nether/
+world_the_end/
+crash-reports/
+
+# Player and server state
+banned-ips.json
+banned-players.json
+ops.json
+usercache.json
+whitelist.json
+
+# Plugin binaries and data
+plugins/*
+!plugins/README.md
+!plugins/AntiVillagerLag/
+plugins/AntiVillagerLag/*
+!plugins/AntiVillagerLag/config.yml
+!plugins/AxGraves/
+plugins/AxGraves/*
+!plugins/AxGraves/config.yml
+!plugins/AxInventoryRestore/
+plugins/AxInventoryRestore/*
+!plugins/AxInventoryRestore/config.yml
+!plugins/QSMPCompanions/
+plugins/QSMPCompanions/*
+!plugins/QSMPCompanions/config.yml
+!plugins/TrialChamberPro/
+plugins/TrialChamberPro/*
+!plugins/TrialChamberPro/config.yml
+
+# Custom plugin build output
+custom-plugins/*/build/
+
+# Source datapacks are local server content.
+datapacks/*
+!datapacks/README.md
+!datapacks/30-qsmp-rules/
+!datapacks/30-qsmp-rules/**
+
+# Local backups
+backups/*
+!backups/.gitkeep
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

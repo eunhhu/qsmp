@@ -1,0 +1,15 @@
+name: QSMPCompanions
+version: '1.1.0'
+main: dev.qsmp.companions.QSMPCompanions
+api-version: '26.1'
+description: ARK-inspired companion progression, armor, cryopods, and regeneration.
+authors: [QSMP]
+commands:
+  companion:
+    description: Inspect and manage companions.
+    aliases: [pet]
+    usage: /companion <info|claim|give|reload>
+permissions:
+  qsmpcompanions.admin:
+    description: Give companion items and reload settings.
+    default: op

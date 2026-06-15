@@ -1,0 +1,36 @@
+combat:
+  parry-window-ms: 425
+  parry-cooldown-ms: 1800
+  roll-invulnerability-ms: 475
+  roll-cooldown-ms: 2600
+  roll-horizontal-speed: 1.15
+
+companions:
+  tactical-radius: 28.0
+  ranger-cooldown-ticks: 45
+  ranger-damage: 6.0
+  medic-cooldown-ticks: 80
+  medic-radius: 9.0
+  medic-heal: 4.0
+  vanguard-damage-multiplier: 1.35
+  vanguard-damage-reduction: 0.22
+
+outposts:
+  production-interval-ticks: 1200
+  gatherer-radius: 10.0
+  warehouse-radius: 64.0
+
+warfront:
+  build-blocks-per-tick: 3000
+  minimum-distance-from-spawn: 700
+  maximum-distance-from-spawn: 1100
+  trigger-radius: 58.0
+  cancel-radius: 82.0
+  prelude-seconds: 15
+  cooldown-minutes: 180
+  assault-waves: 3
+  base-wave-size: 10
+  mobs-per-player: 3
+  boss-base-health: 700.0
+  boss-health-per-player: 220.0
+  transition-delay-ticks: 100

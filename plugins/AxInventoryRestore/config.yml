@@ -1,0 +1,59 @@
+prefix: "<gradient:#00AAFF:#00CCFF><b>AxInventoryRestore</b></gradient> &7» "
+
+database:
+  type: "h2"
+  address: 127.0.0.1
+  port: 3306
+  database: admin
+  username: admin
+  password: "admin"
+  pool:
+    maximum-pool-size: 10
+    minimum-idle: 10
+    maximum-lifetime: 1800000
+    keepalive-time: 0
+    connection-timeout: 5000
+
+cleanup-after-days: 14
+date-format: "yyyy/MM/dd HH:mm:ss"
+enable-all-category: true
+
+automatic-backup:
+  enabled: true
+  seconds: 180
+
+menu-rows:
+  main-menu: 4
+  backup-selector: 4
+
+compact-database: true
+
+enabled-backups:
+  ender-chest: true
+  death: true
+  join: true
+  quit: true
+  world-change: true
+  gamemode-change: true
+  container-close: false
+
+save-limits:
+  ender-chest: 20
+  death: 30
+  join: 10
+  quit: 20
+  world-change: 10
+  gamemode-change: 10
+  container-close: 0
+  manual: 20
+  automatic: 40
+  total: 100
+
+enable-discord-addon: false
+
+update-notifier:
+  enabled: true
+  on-join: true
+
+debug: false
+version: 8
