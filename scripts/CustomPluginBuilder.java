@@ -2,6 +2,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -20,16 +24,115 @@ public final class CustomPluginBuilder {
             new PluginBuild("QSMPCompanions", "qsmp-companions", "QSMPCompanions.jar"),
             new PluginBuild("QSMPFrontier", "qsmp-frontier", "QSMPFrontier.jar"));
 
+    // Compile-only dependency referenced by the Purpur/Paper API method signatures
+    // (e.g. ItemMeta#setDisplayName(@Nullable String)). It is not extracted into
+    // libraries/ by the Purpur bootstrap, so we fetch it on demand.
+    private static final String ANNOTATIONS_VERSION = "26.0.2";
+    private static final String ANNOTATIONS_URL =
+            "https://repo1.maven.org/maven2/org/jetbrains/annotations/"
+            + ANNOTATIONS_VERSION + "/annotations-" + ANNOTATIONS_VERSION + ".jar";
+    private static final String USER_AGENT = "qsmp-bootstrap/1.0 (Purpur server setup)";
+
     public static void main(String[] args) {
+        // Setup steps are best-effort: a failure here must not block the server from
+        // starting. We warn loudly and let the per-plugin builds surface what they can.
         try {
             bootstrapPurpurLibraries();
-            for (PluginBuild plugin : PLUGINS) {
-                build(plugin);
-            }
         } catch (Exception exception) {
-            System.err.println("Custom plugin build failed: " + exception.getMessage());
-            System.exit(1);
+            System.err.println(
+                    "WARNING: Purpur library bootstrap failed: " + exception.getMessage());
         }
+        try {
+            ensureCompileDependencies();
+        } catch (Exception exception) {
+            System.err.println(
+                    "WARNING: compile dependency fetch failed: " + exception.getMessage());
+        }
+
+        int failed = 0;
+        for (PluginBuild plugin : PLUGINS) {
+            try {
+                build(plugin);
+            } catch (Exception exception) {
+                failed++;
+                System.err.println(
+                        "!! Custom plugin build failed for " + plugin.name() + ": "
+                        + exception.getMessage());
+            }
+        }
+
+        if (failed > 0) {
+            System.err.println("WARNING: " + failed + "/" + PLUGINS.size()
+                    + " custom plugin(s) failed to build; the server will start without the "
+                    + "failed plugin(s). Any previously built jar is left in place.");
+        }
+        // Intentionally exit 0 even on per-plugin failures (safe build): one broken
+        // plugin should never hold the entire server startup hostage.
+    }
+
+    private static void ensureCompileDependencies() throws Exception {
+        Path libraries = ROOT.resolve("libraries");
+        if (annotationsJarPresent(libraries)) {
+            return;
+        }
+
+        Path destination = libraries.resolve("org/jetbrains/annotations")
+                .resolve(ANNOTATIONS_VERSION)
+                .resolve("annotations-" + ANNOTATIONS_VERSION + ".jar");
+        Files.createDirectories(destination.getParent());
+        Path temporary = destination.resolveSibling(
+                "." + destination.getFileName() + ".download");
+        Files.deleteIfExists(temporary);
+
+        System.out.println(
+                "Fetching compile dependency: org.jetbrains:annotations:" + ANNOTATIONS_VERSION);
+        HttpClient client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(ANNOTATIONS_URL))
+                .header("User-Agent", USER_AGENT)
+                .GET()
+                .build();
+        HttpResponse<Path> response =
+                client.send(request, HttpResponse.BodyHandlers.ofFile(temporary));
+        if (response.statusCode() != 200) {
+            Files.deleteIfExists(temporary);
+            throw new IllegalStateException(
+                    "download returned HTTP " + response.statusCode() + " for " + ANNOTATIONS_URL);
+        }
+        if (!isZipArchive(temporary)) {
+            Files.deleteIfExists(temporary);
+            throw new IllegalStateException("downloaded annotations jar is not a valid archive");
+        }
+        moveReplace(temporary, destination);
+        System.out.println("Installed " + destination);
+    }
+
+    private static boolean annotationsJarPresent(Path libraries) throws IOException {
+        if (!Files.isDirectory(libraries)) {
+            return false;
+        }
+        try (var paths = Files.walk(libraries)) {
+            return paths.anyMatch(path -> Files.isRegularFile(path)
+                    && path.getParent() != null
+                    && path.getParent().toString().replace(File.separatorChar, '/')
+                            .endsWith("org/jetbrains/annotations/" + ANNOTATIONS_VERSION)
+                    && path.getFileName().toString().startsWith("annotations-")
+                    && path.getFileName().toString().endsWith(".jar"));
+        }
+    }
+
+    private static boolean isZipArchive(Path file) throws IOException {
+        if (Files.size(file) < 4) {
+            return false;
+        }
+        byte[] header = new byte[4];
+        try (InputStream input = Files.newInputStream(file)) {
+            if (input.read(header) != 4) {
+                return false;
+            }
+        }
+        return header[0] == 'P' && header[1] == 'K' && header[2] == 0x03 && header[3] == 0x04;
     }
 
     private static void build(PluginBuild plugin) throws Exception {
