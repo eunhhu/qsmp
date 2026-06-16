@@ -9,8 +9,11 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -31,7 +34,11 @@ public final class CustomPluginBuilder {
     private static final String ANNOTATIONS_URL =
             "https://repo1.maven.org/maven2/org/jetbrains/annotations/"
             + ANNOTATIONS_VERSION + "/annotations-" + ANNOTATIONS_VERSION + ".jar";
+    private static final String ANNOTATIONS_SHA256 =
+            "2037be378980d3ba9333e97955f3b2cde392aa124d04ca73ce2eee6657199297";
     private static final String USER_AGENT = "qsmp-bootstrap/1.0 (Purpur server setup)";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration DOWNLOAD_TIMEOUT = Duration.ofSeconds(30);
 
     public static void main(String[] args) {
         // Setup steps are best-effort: a failure here must not block the server from
@@ -58,13 +65,15 @@ public final class CustomPluginBuilder {
                 System.err.println(
                         "!! Custom plugin build failed for " + plugin.name() + ": "
                         + exception.getMessage());
+                quarantineFailedPlugin(plugin);
             }
         }
 
         if (failed > 0) {
             System.err.println("WARNING: " + failed + "/" + PLUGINS.size()
                     + " custom plugin(s) failed to build; the server will start without the "
-                    + "failed plugin(s). Any previously built jar is left in place.");
+                    + "failed plugin(s). Any previously built jar for a failed plugin was moved "
+                    + "to plugins/failed-builds/.");
         }
         // Intentionally exit 0 even on per-plugin failures (safe build): one broken
         // plugin should never hold the entire server startup hostage.
@@ -72,7 +81,7 @@ public final class CustomPluginBuilder {
 
     private static void ensureCompileDependencies() throws Exception {
         Path libraries = ROOT.resolve("libraries");
-        if (annotationsJarPresent(libraries)) {
+        if (validAnnotationsJarPresent(libraries)) {
             return;
         }
 
@@ -87,10 +96,12 @@ public final class CustomPluginBuilder {
         System.out.println(
                 "Fetching compile dependency: org.jetbrains:annotations:" + ANNOTATIONS_VERSION);
         HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
         HttpRequest request = HttpRequest.newBuilder(URI.create(ANNOTATIONS_URL))
                 .header("User-Agent", USER_AGENT)
+                .timeout(DOWNLOAD_TIMEOUT)
                 .GET()
                 .build();
         HttpResponse<Path> response =
@@ -104,22 +115,53 @@ public final class CustomPluginBuilder {
             Files.deleteIfExists(temporary);
             throw new IllegalStateException("downloaded annotations jar is not a valid archive");
         }
+        requireSha256(temporary, ANNOTATIONS_SHA256);
         moveReplace(temporary, destination);
         System.out.println("Installed " + destination);
     }
 
-    private static boolean annotationsJarPresent(Path libraries) throws IOException {
+    private static void quarantineFailedPlugin(PluginBuild plugin) {
+        Path target = plugin.target();
+        if (!Files.exists(target)) {
+            return;
+        }
+        Path quarantine = plugin.failedTarget();
+        try {
+            Files.createDirectories(quarantine.getParent());
+            moveReplace(target, quarantine);
+            System.err.println("Moved previous " + plugin.name() + " jar to " + quarantine
+                    + " so Bukkit will not load a stale plugin.");
+        } catch (IOException exception) {
+            System.err.println("WARNING: failed to quarantine previous " + plugin.name()
+                    + " jar at " + target + ": " + exception.getMessage());
+        }
+    }
+
+    private static boolean validAnnotationsJarPresent(Path libraries) throws Exception {
         if (!Files.isDirectory(libraries)) {
             return false;
         }
         try (var paths = Files.walk(libraries)) {
-            return paths.anyMatch(path -> Files.isRegularFile(path)
-                    && path.getParent() != null
-                    && path.getParent().toString().replace(File.separatorChar, '/')
-                            .endsWith("org/jetbrains/annotations/" + ANNOTATIONS_VERSION)
-                    && path.getFileName().toString().startsWith("annotations-")
-                    && path.getFileName().toString().endsWith(".jar"));
+            for (Path path : paths.filter(CustomPluginBuilder::isAnnotationsJar).toList()) {
+                if (sha256(path).equals(ANNOTATIONS_SHA256)) {
+                    return true;
+                }
+                Path quarantine = path.resolveSibling(path.getFileName() + ".sha256-mismatch");
+                moveReplace(path, quarantine);
+                System.err.println("WARNING: ignored annotations jar with SHA-256 mismatch: "
+                        + path + " moved to " + quarantine);
+            }
+            return false;
         }
+    }
+
+    private static boolean isAnnotationsJar(Path path) {
+        return Files.isRegularFile(path)
+                && path.getParent() != null
+                && path.getParent().toString().replace(File.separatorChar, '/')
+                        .endsWith("org/jetbrains/annotations/" + ANNOTATIONS_VERSION)
+                && path.getFileName().toString().startsWith("annotations-")
+                && path.getFileName().toString().endsWith(".jar");
     }
 
     private static boolean isZipArchive(Path file) throws IOException {
@@ -133,6 +175,27 @@ public final class CustomPluginBuilder {
             }
         }
         return header[0] == 'P' && header[1] == 'K' && header[2] == 0x03 && header[3] == 0x04;
+    }
+
+    private static void requireSha256(Path file, String expected) throws Exception {
+        String actual = sha256(file);
+        if (!actual.equals(expected)) {
+            Files.deleteIfExists(file);
+            throw new IllegalStateException("downloaded annotations jar SHA-256 mismatch");
+        }
+    }
+
+    private static String sha256(Path file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] buffer = new byte[8192];
+        try (InputStream input = Files.newInputStream(file)) {
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+        }
+
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     private static void build(PluginBuild plugin) throws Exception {
@@ -316,6 +379,12 @@ public final class CustomPluginBuilder {
 
         Path target() {
             return ROOT.resolve("plugins").resolve(targetName);
+        }
+
+        Path failedTarget() {
+            return ROOT.resolve("plugins")
+                    .resolve("failed-builds")
+                    .resolve(targetName + ".failed");
         }
     }
 }

@@ -4,6 +4,9 @@ Minecraft Java Edition `26.1.2`용 Purpur SMP 기본 구성입니다. 서버 쪽
 플러그인을 사용할 수 있지만 친구들은 별도 모드 없이 바닐라 클라이언트로
 접속할 수 있습니다.
 
+친구들에게 보여줄 콘텐츠 사용법과 운영 문서는 [docs](docs)에 정리되어
+있습니다.
+
 ## 현재 설정
 
 - Minecraft/Purpur: `26.1.2`, 최신 빌드
@@ -212,12 +215,21 @@ Minecraft 버전을 변경하면 먼저 `resolve`를 실행해야 합니다. 해
 - 방패를 들고 손 바꾸기 키(`F`): 짧은 판정의 패링
 - 달리는 중 웅크리기 한 번: 무적 판정이 포함된 구르기
 - `Frontier Compass` 우클릭: 야생에 잠든 전장 방향 추적
+- `Frontier Compass` 웅크린 우클릭: 봉인 유적 방향 추적
 - `Tactical Whistle` 우클릭: 동료 역할 선택, 동료에게 우클릭해 지정
 
 전장은 스폰에서 700~1100블록 떨어진 위치에 결정되며, 서버 시작 때 먼
 청크를 강제로 생성하지 않습니다. 플레이어가 실제로 탐험해 주변을 로드하면
 자연 지형 높이에 맞춰 길, 야영지, 요새가 건설됩니다. 전장 반경에 들어가
 15초 동안 머무르면 전쟁 나팔과 함께 레이드가 자동 시작됩니다.
+
+현재 로컬 전장은 QA용 `buildspawn`으로 `world x=80, z=-240`에 건설되어
+있습니다. 레이드는 참가자를 추적하고, 중간 합류자를 보상/보스바 대상으로
+추가하며, 전장이 45초 동안 비면 실패 처리 후 소환 몹을 정리합니다.
+
+봉인 유적은 현재 `world x=116, z=-204`에 건설되어 있습니다. 플레이어는
+나침반을 들고 웅크린 채 우클릭해 유적을 찾고, 주변 ward 3개를 파괴한 뒤
+매복한 `Ruin Sentinel`을 정리해야 vault를 열 수 있습니다.
 
 3번의 야외 공격 웨이브와 괴수 돌파전 뒤 `Iron Tyrant` 보스가 등장합니다.
 보스는 참가 인원에 따라 체력이 증가하고 70%, 40% 체력에서 증원·격노
@@ -245,6 +257,9 @@ frontier outpost pulse
 frontier warfront buildspawn
 frontier warfront start
 frontier warfront stop
+frontier expedition status
+frontier expedition buildspawn
+frontier expedition reset
 ```
 
 맵 리셋 시 자원 거점 기록과 전장 좌표도 월드 백업에 포함된 뒤 초기화되며,

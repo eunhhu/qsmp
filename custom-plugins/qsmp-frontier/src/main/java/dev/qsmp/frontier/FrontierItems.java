@@ -60,7 +60,7 @@ final class FrontierItems {
                 ChatColor.GOLD + "Frontier Compass",
                 List.of(
                         ChatColor.GRAY + "Right-click to attune it to the warfront.",
-                        ChatColor.GRAY + "The needle then points toward the battlefield.",
+                        ChatColor.GRAY + "Sneak-right-click to find a sealed ruin.",
                         ChatColor.DARK_AQUA + "The raid begins when explorers enter the field."));
     }
 
@@ -135,7 +135,7 @@ final class FrontierItems {
         give(player, fieldCompass());
         player.sendMessage(ChatColor.GOLD + "A Frontier Compass was added to your inventory.");
         player.sendMessage(ChatColor.GRAY
-                + "Right-click it to locate the battlefield. Entering the field starts its event.");
+                + "Right-click it for the battlefield; sneak-right-click it for a ruin expedition.");
     }
 
     void give(Player player, ItemStack item) {

@@ -35,18 +35,21 @@ final class FrontierListener implements Listener {
     private final FrontierItems items;
     private final OutpostService outposts;
     private final WarfrontService warfront;
+    private final ExpeditionService expeditions;
 
     FrontierListener(
             CombatService combat,
             CompanionRoleService roles,
             FrontierItems items,
             OutpostService outposts,
-            WarfrontService warfront) {
+            WarfrontService warfront,
+            ExpeditionService expeditions) {
         this.combat = combat;
         this.roles = roles;
         this.items = items;
         this.outposts = outposts;
         this.warfront = warfront;
+        this.expeditions = expeditions;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -80,6 +83,10 @@ final class FrontierListener implements Listener {
             return;
         }
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK
+                && expeditions.onInteract(event)) {
+            return;
+        }
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK
                 && event.getClickedBlock() != null
                 && outposts.isOutpost(event.getClickedBlock())) {
             if (outposts.interact(
@@ -98,7 +105,11 @@ final class FrontierListener implements Listener {
             items.cycleWhistle(event.getPlayer(), held);
         } else if (items.is(held, FrontierItems.FIELD_COMPASS)) {
             event.setCancelled(true);
-            warfront.guide(event.getPlayer());
+            if (event.getPlayer().isSneaking()) {
+                expeditions.guide(event.getPlayer());
+            } else {
+                warfront.guide(event.getPlayer());
+            }
         }
     }
 
@@ -140,6 +151,7 @@ final class FrontierListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(EntityDeathEvent event) {
         warfront.onDeath(event.getEntity());
+        expeditions.onDeath(event);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -152,6 +164,9 @@ final class FrontierListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onOutpostBreak(BlockBreakEvent event) {
+        if (expeditions.onBlockBreak(event)) {
+            return;
+        }
         if (!outposts.isOutpost(event.getBlock())) {
             return;
         }

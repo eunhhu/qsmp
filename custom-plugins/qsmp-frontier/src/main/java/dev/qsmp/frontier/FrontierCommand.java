@@ -19,18 +19,21 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
     private final FrontierItems items;
     private final OutpostService outposts;
     private final WarfrontService warfront;
+    private final ExpeditionService expeditions;
 
     FrontierCommand(
             QSMPFrontier plugin,
             CompanionRoleService roles,
             FrontierItems items,
             OutpostService outposts,
-            WarfrontService warfront) {
+            WarfrontService warfront,
+            ExpeditionService expeditions) {
         this.plugin = plugin;
         this.roles = roles;
         this.items = items;
         this.outposts = outposts;
         this.warfront = warfront;
+        this.expeditions = expeditions;
     }
 
     @Override
@@ -48,6 +51,7 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "outpost" -> outpost(sender, args);
             case "warfront" -> warfront(sender, args);
+            case "expedition" -> expedition(sender, args);
             case "status" -> status(sender);
             case "reload" -> reload(sender);
             default -> {
@@ -170,9 +174,41 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean expedition(CommandSender sender, String[] args) {
+        if (args.length == 2 && args[1].equalsIgnoreCase("status")) {
+            sender.sendMessage(
+                    ChatColor.GOLD + "Expedition: " + ChatColor.GRAY + expeditions.status());
+            return true;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("find")) {
+            if (sender instanceof Player player) {
+                expeditions.guide(player);
+            } else {
+                sender.sendMessage("Players only.");
+            }
+            return true;
+        }
+        if (!sender.hasPermission("qsmpfrontier.admin")) {
+            sender.sendMessage(ChatColor.RED + "Operator permission is required.");
+            return true;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("buildspawn")) {
+            expeditions.buildSpawn(sender);
+            return true;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("reset")) {
+            expeditions.reset(true);
+            return true;
+        }
+        sender.sendMessage(ChatColor.YELLOW
+                + "/frontier expedition <find|status|buildspawn|reset>");
+        return true;
+    }
+
     private boolean status(CommandSender sender) {
         sender.sendMessage(ChatColor.GOLD + "QSMP Frontier"
                 + ChatColor.GRAY + " | Warfront: " + warfront.status()
+                + " | Expedition: " + expeditions.status()
                 + " | Outposts: " + outposts.count());
         return true;
     }
@@ -215,7 +251,10 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
                 choices.add("give");
                 choices.add("outpost");
                 choices.add("warfront");
+                choices.add("expedition");
                 choices.add("reload");
+            } else if (sender instanceof Player) {
+                choices.add("expedition");
             }
             return matching(choices, args[0]);
         }
@@ -229,6 +268,14 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("outpost")) {
             return matching(List.of("buildspawn", "pulse"), args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("expedition")) {
+            List<String> choices = new ArrayList<>(List.of("find", "status"));
+            if (sender.hasPermission("qsmpfrontier.admin")) {
+                choices.add("buildspawn");
+                choices.add("reset");
+            }
+            return matching(choices, args[1]);
         }
         if (args.length == 3
                 && args[0].equalsIgnoreCase("outpost")

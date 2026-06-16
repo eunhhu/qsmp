@@ -3,8 +3,10 @@ package dev.qsmp.frontier;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -45,6 +47,8 @@ final class WarfrontService {
     private final File storageFile;
     private final Set<UUID> enemies = new HashSet<>();
     private final Set<UUID> allies = new HashSet<>();
+    private final Set<UUID> participants = new HashSet<>();
+    private final Map<UUID, Long> participantLastSeen = new HashMap<>();
     private Location center;
     private boolean built;
     private boolean active;
@@ -53,8 +57,10 @@ final class WarfrontService {
     private boolean transitionPending;
     private long triggerStartedAt;
     private long cooldownUntil;
+    private long lastParticipantSeenAt;
     private int lastPreludeSecond = -1;
     private int stage;
+    private int raidSequence;
     private int raidPlayers;
     private UUID bossId;
     private int bossPhase;
@@ -176,13 +182,27 @@ final class WarfrontService {
     }
 
     private void beginRaid() {
+        cleanupEntities();
+        clearBossBar();
+        participants.clear();
+        participantLastSeen.clear();
+        raidSequence++;
         active = true;
         preparing = false;
         triggerStartedAt = 0L;
         lastPreludeSecond = -1;
+        transitionPending = false;
         stage = 0;
         bossPhase = 0;
-        raidPlayers = Math.max(1, nearbyPlayers(120.0).size());
+        lastBossSlam = 0L;
+        lastBossVolley = 0L;
+        List<Player> startingPlayers = nearbyPlayers(participantRadius());
+        long now = System.currentTimeMillis();
+        for (Player player : startingPlayers) {
+            markParticipant(player, now);
+        }
+        lastParticipantSeenAt = now;
+        raidPlayers = Math.max(1, participants.size());
         setBattlefieldTickets(true);
         Bukkit.broadcastMessage(ChatColor.DARK_RED
                 + "WARFRONT: The enemy host is advancing across three lanes.");
@@ -191,20 +211,8 @@ final class WarfrontService {
     }
 
     void stop(boolean announce) {
-        for (UUID id : new HashSet<>(enemies)) {
-            Entity entity = Bukkit.getEntity(id);
-            if (entity != null) {
-                entity.remove();
-            }
-        }
-        for (UUID id : new HashSet<>(allies)) {
-            Entity entity = Bukkit.getEntity(id);
-            if (entity != null) {
-                entity.remove();
-            }
-        }
-        enemies.clear();
-        allies.clear();
+        raidSequence++;
+        cleanupEntities();
         setBattlefieldTickets(false);
         active = false;
         preparing = false;
@@ -212,10 +220,11 @@ final class WarfrontService {
         lastPreludeSecond = -1;
         transitionPending = false;
         bossId = null;
-        if (bossBar != null) {
-            bossBar.removeAll();
-            bossBar = null;
-        }
+        bossPhase = 0;
+        participants.clear();
+        participantLastSeen.clear();
+        lastParticipantSeenAt = 0L;
+        clearBossBar();
         if (announce) {
             Bukkit.broadcastMessage(ChatColor.YELLOW + "The warfront raid was stopped.");
         }
@@ -225,6 +234,9 @@ final class WarfrontService {
         UUID id = entity.getUniqueId();
         enemies.remove(id);
         allies.remove(id);
+        if (entity instanceof Player && participants.contains(id)) {
+            participantLastSeen.put(id, System.currentTimeMillis());
+        }
         if (!active) {
             return;
         }
@@ -233,14 +245,7 @@ final class WarfrontService {
             return;
         }
         if (enemies.isEmpty() && !transitionPending) {
-            transitionPending = true;
-            long delay = plugin.getConfig().getLong("warfront.transition-delay-ticks", 100L);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (active) {
-                    transitionPending = false;
-                    advance();
-                }
-            }, Math.max(20L, delay));
+            scheduleAdvance();
         }
     }
 
@@ -257,10 +262,16 @@ final class WarfrontService {
             tickTrigger();
             return;
         }
-        enemies.removeIf(id -> {
-            Entity entity = Bukkit.getEntity(id);
-            return entity == null || !entity.isValid() || entity.isDead();
-        });
+        tickParticipants();
+        if (!active) {
+            return;
+        }
+        pruneInvalidEntities(enemies);
+        pruneInvalidEntities(allies);
+        if (bossId != null && isBossStage() && !bossPresent()) {
+            failRaid(ChatColor.DARK_RED + "WARFRONT FAILED: The Iron Tyrant vanished.");
+            return;
+        }
         for (UUID id : enemies) {
             Entity entity = Bukkit.getEntity(id);
             if (entity instanceof Mob mob && (mob.getTarget() == null || mob.getTarget().isDead())) {
@@ -272,6 +283,9 @@ final class WarfrontService {
         }
         tickFieldMedic();
         tickBoss();
+        if (enemies.isEmpty() && !transitionPending && !isBossStage()) {
+            scheduleAdvance();
+        }
     }
 
     boolean active() {
@@ -299,7 +313,8 @@ final class WarfrontService {
             }
             return "dormant at " + center.getBlockX() + ", " + center.getBlockZ();
         }
-        return "active stage " + stage + ", enemies " + enemies.size();
+        return "active stage " + stage + ", enemies " + enemies.size()
+                + ", participants " + participants.size();
     }
 
     boolean isWarfrontEntity(Entity entity) {
@@ -371,7 +386,7 @@ final class WarfrontService {
         bossId = boss.getUniqueId();
         bossBar = Bukkit.createBossBar(
                 ChatColor.DARK_RED + "Iron Tyrant", BarColor.RED, BarStyle.SEGMENTED_10);
-        for (Player player : nearbyPlayers(140.0)) {
+        for (Player player : rewardPlayers()) {
             bossBar.addPlayer(player);
         }
         Bukkit.broadcastMessage(ChatColor.DARK_RED
@@ -516,7 +531,7 @@ final class WarfrontService {
     private void complete() {
         Bukkit.broadcastMessage(ChatColor.GOLD
                 + "VICTORY: The Iron Tyrant has fallen and the warfront is secured.");
-        for (Player player : nearbyPlayers(140.0)) {
+        for (Player player : rewardPlayers()) {
             player.giveExp(750);
             player.getInventory().addItem(
                     new ItemStack(org.bukkit.Material.EMERALD, 12),
@@ -538,6 +553,23 @@ final class WarfrontService {
         stop(false);
     }
 
+    private void cleanupEntities() {
+        for (UUID id : new HashSet<>(enemies)) {
+            Entity entity = Bukkit.getEntity(id);
+            if (entity != null) {
+                entity.remove();
+            }
+        }
+        for (UUID id : new HashSet<>(allies)) {
+            Entity entity = Bukkit.getEntity(id);
+            if (entity != null) {
+                entity.remove();
+            }
+        }
+        enemies.clear();
+        allies.clear();
+    }
+
     private void mark(LivingEntity entity) {
         entity.getPersistentDataContainer().set(
                 keys.warfrontMob, PersistentDataType.BYTE, (byte) 1);
@@ -552,6 +584,27 @@ final class WarfrontService {
         for (Player player : center.getWorld().getPlayers()) {
             if (!player.isDead()
                     && player.getLocation().distanceSquared(center) <= radius * radius) {
+                players.add(player);
+            }
+        }
+        return players;
+    }
+
+    private List<Player> rewardPlayers() {
+        long now = System.currentTimeMillis();
+        long grace = participantGraceMs();
+        List<Player> players = new ArrayList<>();
+        for (UUID id : participants) {
+            Player player = Bukkit.getPlayer(id);
+            if (player == null || center == null
+                    || !player.getWorld().equals(center.getWorld())) {
+                continue;
+            }
+            long lastSeen = participantLastSeen.getOrDefault(id, 0L);
+            boolean fallen = player.isDead();
+            boolean nearby = player.getLocation().distanceSquared(center)
+                    <= participantRadius() * participantRadius();
+            if (fallen || nearby || now - lastSeen <= grace) {
                 players.add(player);
             }
         }
@@ -588,6 +641,94 @@ final class WarfrontService {
         if (instance != null) {
             instance.setBaseValue(value);
         }
+    }
+
+    private void pruneInvalidEntities(Set<UUID> ids) {
+        ids.removeIf(id -> {
+            Entity entity = Bukkit.getEntity(id);
+            return entity == null || !entity.isValid() || entity.isDead();
+        });
+    }
+
+    private void scheduleAdvance() {
+        transitionPending = true;
+        int scheduledRaid = raidSequence;
+        long delay = plugin.getConfig().getLong("warfront.transition-delay-ticks", 100L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (active && raidSequence == scheduledRaid) {
+                transitionPending = false;
+                advance();
+            }
+        }, Math.max(20L, delay));
+    }
+
+    private void tickParticipants() {
+        long now = System.currentTimeMillis();
+        List<Player> nearby = nearbyPlayers(participantRadius());
+        if (!nearby.isEmpty()) {
+            lastParticipantSeenAt = now;
+        }
+        for (Player player : nearby) {
+            markParticipant(player, now);
+        }
+        syncBossBar(nearby);
+        if (now - lastParticipantSeenAt > participantGraceMs()) {
+            failRaid(ChatColor.DARK_RED + "WARFRONT FAILED: The field was abandoned.");
+        }
+    }
+
+    private void markParticipant(Player player, long now) {
+        participants.add(player.getUniqueId());
+        participantLastSeen.put(player.getUniqueId(), now);
+    }
+
+    private void syncBossBar(List<Player> nearby) {
+        if (bossBar == null) {
+            return;
+        }
+        Set<UUID> nearbyIds = new HashSet<>();
+        for (Player player : nearby) {
+            nearbyIds.add(player.getUniqueId());
+            bossBar.addPlayer(player);
+        }
+        for (Player player : new ArrayList<>(bossBar.getPlayers())) {
+            if (!nearbyIds.contains(player.getUniqueId())) {
+                bossBar.removePlayer(player);
+            }
+        }
+    }
+
+    private void clearBossBar() {
+        if (bossBar != null) {
+            bossBar.removeAll();
+            bossBar = null;
+        }
+    }
+
+    private boolean isBossStage() {
+        int assaultWaves = plugin.getConfig().getInt("warfront.assault-waves", 3);
+        return stage > assaultWaves + 1;
+    }
+
+    private boolean bossPresent() {
+        Entity entity = bossId == null ? null : Bukkit.getEntity(bossId);
+        return entity instanceof Ravager boss && boss.isValid() && !boss.isDead();
+    }
+
+    private void failRaid(String message) {
+        Bukkit.broadcastMessage(message);
+        stop(false);
+    }
+
+    private double participantRadius() {
+        return Math.max(32.0,
+                plugin.getConfig().getDouble("warfront.participant-radius", 140.0));
+    }
+
+    private long participantGraceMs() {
+        long seconds = Math.max(10L,
+                plugin.getConfig().getLong("warfront.participant-grace-seconds", 45L));
+        return seconds * 1000L;
     }
 
     private void saveCenter() {

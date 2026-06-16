@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class QSMPFrontier extends JavaPlugin {
     private OutpostService outposts;
     private WarfrontService warfront;
+    private ExpeditionService expeditions;
 
     @Override
     public void onEnable() {
@@ -19,10 +20,11 @@ public final class QSMPFrontier extends JavaPlugin {
         outposts = new OutpostService(this, keys, items, roles);
         WarfrontBuilder builder = new WarfrontBuilder(this);
         warfront = new WarfrontService(this, keys, items, builder);
+        expeditions = new ExpeditionService(this, keys, items);
         FrontierListener listener = new FrontierListener(
-                combat, roles, items, outposts, warfront);
+                combat, roles, items, outposts, warfront, expeditions);
         FrontierCommand commandHandler = new FrontierCommand(
-                this, roles, items, outposts, warfront);
+                this, roles, items, outposts, warfront, expeditions);
 
         Bukkit.getPluginManager().registerEvents(listener, this);
         PluginCommand command = Objects.requireNonNull(
@@ -33,6 +35,7 @@ public final class QSMPFrontier extends JavaPlugin {
         items.registerRecipes();
         outposts.load();
         warfront.load();
+        expeditions.load();
         Bukkit.getScheduler().runTaskLater(this, warfront::ensureEncounter, 40L);
         Bukkit.getScheduler().runTaskTimer(this, roles::tick, 20L, 10L);
         long productionInterval = Math.max(
@@ -40,8 +43,10 @@ public final class QSMPFrontier extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimer(
                 this, outposts::produce, productionInterval, productionInterval);
         Bukkit.getScheduler().runTaskTimer(this, warfront::tick, 20L, 20L);
+        Bukkit.getScheduler().runTaskTimer(this, expeditions::tick, 30L, 20L);
         getLogger().info(
-                "Dynamic combat, tactical companions, outposts, and warfront raids are enabled.");
+                "Dynamic combat, tactical companions, outposts, warfront raids, "
+                        + "and ruin expeditions are enabled.");
     }
 
     @Override
@@ -49,8 +54,12 @@ public final class QSMPFrontier extends JavaPlugin {
         if (outposts != null) {
             outposts.save();
         }
-        if (warfront != null && warfront.active()) {
+        if (warfront != null) {
             warfront.stop(false);
+        }
+        if (expeditions != null) {
+            expeditions.save();
+            expeditions.cleanupSentinels();
         }
     }
 }

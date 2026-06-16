@@ -88,6 +88,19 @@ vaults:
     ominous-open: BLOCK_VAULT_OPEN_SHUTTER
     cooldown: BLOCK_NOTE_BLOCK_BASS
 
+  feedback:
+    mode: TEXT
+    hologram:
+      duration-ticks: 30
+      y-offset: 1.4
+      scale: 1.5
+      see-through: true
+      success-text: "&a✔"
+      fail-text: "&c✘"
+    sounds:
+      success: ENTITY_PILLAGER_CELEBRATE
+      fail: ENTITY_PILLAGER_AMBIENT
+
   # Vanilla-style loot ejection: drop items from the vault block instead of
   # placing them directly into the player's inventory.
   drop-loot-at-vault: false
