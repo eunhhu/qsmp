@@ -12,6 +12,7 @@ final class FrontierKeys {
     final NamespacedKey whistleRole;
     final NamespacedKey fieldGuideGiven;
     final NamespacedKey warfrontMob;
+    final NamespacedKey expeditionMob;
     final NamespacedKey companionOwner;
     final NamespacedKey companionLevel;
 
@@ -24,6 +25,7 @@ final class FrontierKeys {
         whistleRole = new NamespacedKey(plugin, "whistle_role");
         fieldGuideGiven = new NamespacedKey(plugin, "field_guide_given");
         warfrontMob = new NamespacedKey(plugin, "warfront_mob");
+        expeditionMob = new NamespacedKey(plugin, "expedition_mob");
         companionOwner = Objects.requireNonNull(
                 NamespacedKey.fromString("qsmpcompanions:owner"));
         companionLevel = Objects.requireNonNull(

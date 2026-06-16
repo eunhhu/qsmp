@@ -41,18 +41,22 @@ mkdir -p "$RUNTIME_DIR"
 safe_remove "$STAGE_DIR"
 archive="$RUNTIME_DIR/temurin-25.$extension"
 rm -f -- "$archive"
-api_url="https://api.adoptium.net/v3/binary/latest/25/ga/$os/$arch/jdk/hotspot/normal/eclipse"
+metadata_url="https://api.adoptium.net/v3/assets/latest/25/hotspot?architecture=$arch&image_type=jdk&os=$os&vendor=eclipse"
 
 printf 'Downloading Eclipse Temurin Java 25...\n'
-effective_url="$(curl --fail --location --silent --show-error \
-  --user-agent "$USER_AGENT" --output "$archive" --write-out '%{url_effective}' "$api_url")"
-case "$effective_url" in
+metadata="$(curl --fail --location --silent --show-error \
+  --user-agent "$USER_AGENT" "$metadata_url")"
+package_link="$(printf '%s' "$metadata" | python3 -c \
+  'import json, sys; data=json.load(sys.stdin); print(data[0]["binary"]["package"]["link"])')"
+expected_hash="$(printf '%s' "$metadata" | python3 -c \
+  'import json, sys; data=json.load(sys.stdin); print(data[0]["binary"]["package"]["checksum"])')"
+case "$package_link" in
   https://github.com/adoptium/temurin25-binaries/*) ;;
   *) printf 'Error: Unexpected Java download host.\n' >&2; exit 1 ;;
 esac
 
-expected_hash="$(curl --fail --location --silent --show-error \
-  --user-agent "$USER_AGENT" "$effective_url.sha256.txt" | awk '{print $1}')"
+curl --fail --location --silent --show-error \
+  --user-agent "$USER_AGENT" --output "$archive" "$package_link"
 if command -v sha256sum >/dev/null 2>&1; then
   actual_hash="$(sha256sum "$archive" | awk '{print $1}')"
 else
@@ -75,6 +79,9 @@ extracted="$(find "$STAGE_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
   printf 'Error: Extracted Java runtime was not found.\n' >&2
   exit 1
 }
+if [[ "$os" == "mac" && -x "$extracted/Contents/Home/bin/java" ]]; then
+  extracted="$extracted/Contents/Home"
+fi
 
 candidate="$RUNTIME_DIR/java-new"
 safe_remove "$candidate"

@@ -19,6 +19,11 @@ final class FrontierMath {
                 + activePlayers(players) * Math.max(0.0, perPlayer);
     }
 
+    static double sentinelHealth(int players, double base, double perPlayer) {
+        return Math.max(1.0, base)
+                + activePlayers(players) * Math.max(0.0, perPlayer);
+    }
+
     static double gatherMultiplier(int companionLevel) {
         int level = Math.max(1, companionLevel);
         return Math.min(2.5, 1.25 + level * 0.04);

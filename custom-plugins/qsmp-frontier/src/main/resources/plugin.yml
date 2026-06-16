@@ -2,14 +2,14 @@ name: QSMPFrontier
 version: '1.1.0'
 main: dev.qsmp.frontier.QSMPFrontier
 api-version: '26.1'
-description: Open-field warfront raids, tactical companions, dynamic combat, and resource outposts.
+description: Open-field warfront raids, ruin expeditions, tactical companions, dynamic combat, and resource outposts.
 authors: [QSMP]
 softdepend: [QSMPCompanions, LevelledMobs]
 commands:
   frontier:
-    description: Manage Frontier combat, roles, outposts, and warfront raids.
+    description: Manage Frontier combat, roles, outposts, ruin expeditions, and warfront raids.
     aliases: [ark]
-    usage: /frontier <role|give|warfront|status|reload>
+    usage: /frontier <role|give|warfront|expedition|status|reload>
 permissions:
   qsmpfrontier.admin:
     description: Build and control warfronts and give outpost cores.

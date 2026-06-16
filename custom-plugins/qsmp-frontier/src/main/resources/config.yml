@@ -26,6 +26,8 @@ warfront:
   maximum-distance-from-spawn: 1100
   trigger-radius: 58.0
   cancel-radius: 82.0
+  participant-radius: 140.0
+  participant-grace-seconds: 45
   prelude-seconds: 15
   cooldown-minutes: 180
   assault-waves: 3
@@ -34,3 +36,15 @@ warfront:
   boss-base-health: 700.0
   boss-health-per-player: 220.0
   transition-delay-ticks: 100
+
+expeditions:
+  minimum-distance-from-spawn: 450
+  maximum-distance-from-spawn: 1600
+  discovery-radius: 96.0
+  reward-radius: 48.0
+  cooldown-minutes: 90
+  sentinel-base-count: 2
+  sentinel-count-per-player: 1
+  sentinel-base-health: 24.0
+  sentinel-health-per-player: 6.0
+  reward-experience: 350

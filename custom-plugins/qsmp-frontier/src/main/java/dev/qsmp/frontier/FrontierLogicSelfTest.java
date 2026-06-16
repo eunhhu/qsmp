@@ -8,6 +8,7 @@ public final class FrontierLogicSelfTest {
         require(FrontierMath.waveSize(0, 1, 10, 3) == 13, "minimum player scaling");
         require(FrontierMath.waveSize(4, 3, 10, 3) == 26, "wave scaling");
         require(FrontierMath.bossHealth(3, 700.0, 220.0) == 1360.0, "boss scaling");
+        require(FrontierMath.sentinelHealth(2, 24.0, 6.0) == 36.0, "expedition scaling");
         require(FrontierMath.gatherMultiplier(1) > 1.0, "gatherer base bonus");
         require(FrontierMath.gatherMultiplier(100) == 2.5, "gatherer cap");
         require(FrontierMath.withinWindow(1300L, 1000L, 425L), "active timing window");
