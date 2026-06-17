@@ -33,6 +33,8 @@ final class OutpostService {
     private final FrontierKeys keys;
     private final FrontierItems items;
     private final CompanionRoleService roles;
+    private final ProgressionService progression;
+    private final CinematicService cinematics;
     private final File storageFile;
     private final Map<String, OutpostRecord> outposts = new HashMap<>();
 
@@ -40,11 +42,15 @@ final class OutpostService {
             QSMPFrontier plugin,
             FrontierKeys keys,
             FrontierItems items,
-            CompanionRoleService roles) {
+            CompanionRoleService roles,
+            ProgressionService progression,
+            CinematicService cinematics) {
         this.plugin = plugin;
         this.keys = keys;
         this.items = items;
         this.roles = roles;
+        this.progression = progression;
+        this.cinematics = cinematics;
         storageFile = new File(plugin.getDataFolder(), "outposts.yml");
     }
 
@@ -145,8 +151,13 @@ final class OutpostService {
                     24, 0.5, 0.6, 0.5, 0.08);
             block.getWorld().playSound(
                     block.getLocation(), Sound.BLOCK_ANVIL_USE, 0.9f, 1.35f);
+            cinematics.onOutpostUpgrade(block);
             player.sendMessage(ChatColor.GOLD + record.type.display()
                     + ChatColor.GREEN + " upgraded to tier " + record.tier + ".");
+            progression.grantXp(
+                    player,
+                    plugin.getConfig().getInt("progression.rewards.outpost-upgrade-survivor-xp", 90),
+                    "outpost upgrade");
             return true;
         }
 
@@ -213,7 +224,9 @@ final class OutpostService {
 
             Location location = loaded.barrel.getLocation().add(0.5, 0.8, 0.5);
             double companionMultiplier = roles.gatheringMultiplier(location, record.owner);
-            double multiplier = companionMultiplier * siteMultiplier(record);
+            double multiplier = companionMultiplier
+                    * siteMultiplier(record)
+                    * progression.productionMultiplier(record.owner);
             List<ItemStack> overflow = new ArrayList<>();
             for (ItemStack base : record.type.production(record.tier)) {
                 base.setAmount(Math.max(1, (int) Math.floor(base.getAmount() * multiplier)));
@@ -228,6 +241,10 @@ final class OutpostService {
             world.spawnParticle(
                     particle, location, companionMultiplier > 1.0 ? 8 : 4,
                     0.3, 0.3, 0.3, 0.02);
+            cinematics.onOutpostProduction(
+                    location,
+                    companionMultiplier > 1.0 || multiplier > 1.25,
+                    !remaining.isEmpty());
             record.cycles++;
             changed = true;
         }
@@ -255,6 +272,7 @@ final class OutpostService {
         outposts.put(locationKey(block.getLocation()), record);
         updateBarrel(record);
         save();
+        cinematics.onOutpostEstablished(block);
         sender.sendMessage(ChatColor.GOLD + type.display()
                 + ChatColor.GREEN + " established at tier 1.");
         if (sender instanceof Player player && siteMultiplier(record) < 1.0) {

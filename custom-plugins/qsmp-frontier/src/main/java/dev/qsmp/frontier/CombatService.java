@@ -17,13 +17,17 @@ import org.bukkit.util.Vector;
 
 final class CombatService {
     private final QSMPFrontier plugin;
+    private final ProgressionService progression;
+    private final CinematicService cinematics;
     private final Map<UUID, Long> rollUntil = new HashMap<>();
     private final Map<UUID, Long> rollCooldownUntil = new HashMap<>();
     private final Map<UUID, Long> parryUntil = new HashMap<>();
     private final Map<UUID, Long> parryCooldownUntil = new HashMap<>();
 
-    CombatService(QSMPFrontier plugin) {
+    CombatService(QSMPFrontier plugin, ProgressionService progression, CinematicService cinematics) {
         this.plugin = plugin;
+        this.progression = progression;
+        this.cinematics = cinematics;
     }
 
     boolean startParry(Player player) {
@@ -41,6 +45,7 @@ final class CombatService {
         parryCooldownUntil.put(player.getUniqueId(), now + Math.max(window, cooldown));
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 0.8f, 1.8f);
         player.sendActionBar(ChatColor.AQUA + "PARRY");
+        cinematics.onParryReady(player);
         return true;
     }
 
@@ -65,12 +70,15 @@ final class CombatService {
                 .getLong("combat.roll-invulnerability-ms", 475L);
         long cooldown = plugin.getConfig().getLong("combat.roll-cooldown-ms", 2600L);
         rollUntil.put(id, now + Math.max(150L, invulnerability));
-        rollCooldownUntil.put(id, now + Math.max(invulnerability, cooldown));
+        long adjustedCooldown = Math.round(Math.max(invulnerability, cooldown)
+                * progression.rollCooldownMultiplier(player));
+        rollCooldownUntil.put(id, now + Math.max(invulnerability, adjustedCooldown));
         player.getWorld().spawnParticle(
                 Particle.CLOUD, player.getLocation().add(0, 0.2, 0), 12, 0.4, 0.1, 0.4, 0.03);
         player.getWorld().playSound(
                 player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.7f, 1.35f);
         player.sendActionBar(ChatColor.WHITE + "DODGE");
+        cinematics.onRoll(player);
     }
 
     boolean avoidDamage(EntityDamageEvent event) {
@@ -83,6 +91,7 @@ final class CombatService {
         event.setCancelled(true);
         player.getWorld().spawnParticle(
                 Particle.SWEEP_ATTACK, player.getLocation().add(0, 1.0, 0), 2);
+        cinematics.onDodgeAvoid(player);
         return true;
     }
 
@@ -98,6 +107,7 @@ final class CombatService {
         player.getWorld().spawnParticle(
                 Particle.CRIT, player.getLocation().add(0, 1.0, 0), 25, 0.5, 0.6, 0.5, 0.15);
         player.sendActionBar(ChatColor.GOLD + "PERFECT PARRY");
+        cinematics.onPerfectParry(player, event.getDamager());
 
         Entity damager = event.getDamager();
         if (damager instanceof Projectile projectile) {

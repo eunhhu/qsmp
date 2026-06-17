@@ -45,6 +45,9 @@ final class ExpeditionService {
     private final QSMPFrontier plugin;
     private final FrontierKeys keys;
     private final FrontierItems items;
+    private final ProgressionService progression;
+    private final LegacyService legacies;
+    private final CinematicService cinematics;
     private final File storageFile;
     private final Set<String> wards = new HashSet<>();
     private final Set<UUID> sentinels = new HashSet<>();
@@ -58,10 +61,19 @@ final class ExpeditionService {
     private long lastAmbientAt;
     private long lastVaultPunishAt;
 
-    ExpeditionService(QSMPFrontier plugin, FrontierKeys keys, FrontierItems items) {
+    ExpeditionService(
+            QSMPFrontier plugin,
+            FrontierKeys keys,
+            FrontierItems items,
+            ProgressionService progression,
+            LegacyService legacies,
+            CinematicService cinematics) {
         this.plugin = plugin;
         this.keys = keys;
         this.items = items;
+        this.progression = progression;
+        this.legacies = legacies;
+        this.cinematics = cinematics;
         storageFile = new File(plugin.getDataFolder(), "expedition.yml");
     }
 
@@ -127,6 +139,7 @@ final class ExpeditionService {
         }
         player.setCompassTarget(center);
         player.playSound(player.getLocation(), Sound.ITEM_LODESTONE_COMPASS_LOCK, 0.8f, 1.55f);
+        cinematics.onRuinSignal(player, center);
         String state = built ? stateText() : "uncharted ground";
         player.sendActionBar(ChatColor.AQUA + "Ruin signal: "
                 + Math.round(player.getLocation().distance(center)) + " blocks, " + state);
@@ -233,10 +246,14 @@ final class ExpeditionService {
             block.getWorld().playSound(
                     block.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 1.2f, 0.7f);
             block.setType(Material.AIR, false);
+            if (block.getRelative(0, 1, 0).getType() == Material.END_ROD) {
+                block.getRelative(0, 1, 0).setType(Material.AIR, false);
+            }
             wards.remove(key);
             save();
             int players = Math.max(1, playersNear(50.0).size());
             spawnAmbush(block.getLocation(), players, 2);
+            cinematics.onWardBroken(block.getLocation(), wards.size());
             Bukkit.broadcastMessage(ChatColor.DARK_AQUA
                     + "RUIN: A ward anchor broke. " + wards.size() + " remaining.");
             if (wards.isEmpty() && sentinels.isEmpty()) {
@@ -311,6 +328,7 @@ final class ExpeditionService {
         buildAt(buildableCenter(center));
         Bukkit.broadcastMessage(ChatColor.AQUA
                 + "A sealed ruin has surfaced beyond the frontier.");
+        cinematics.onRuinSurfaced(center);
     }
 
     private void buildAt(Location requestedCenter) {
@@ -335,6 +353,7 @@ final class ExpeditionService {
             }
         }
         ring(world, cx, cz, 10, Material.DEEPSLATE_TILE_WALL);
+        buildRuinSilhouette(world, cx, cz);
         placeSurface(world, cx - 4, cz - 4, Material.SOUL_CAMPFIRE);
         placeSurface(world, cx + 4, cz - 4, Material.SOUL_CAMPFIRE);
         placeSurface(world, cx, cz + 5, Material.SOUL_LANTERN);
@@ -351,6 +370,7 @@ final class ExpeditionService {
         for (int[] offset : WARD_OFFSETS) {
             Location ward = surfaceLocation(world, cx + offset[0], cz + offset[1]);
             ward.getBlock().setType(Material.CRYING_OBSIDIAN, false);
+            ward.getBlock().getRelative(0, 1, 0).setType(Material.END_ROD, false);
             wards.add(locationKey(ward));
             ward.getWorld().spawnParticle(
                     Particle.SOUL_FIRE_FLAME, ward.clone().add(0.5, 1.2, 0.5), 16, 0.4, 0.5, 0.4);
@@ -379,6 +399,29 @@ final class ExpeditionService {
             double radians = Math.toRadians(angle);
             int x = cx + (int) Math.round(Math.cos(radians) * radius);
             int z = cz + (int) Math.round(Math.sin(radians) * radius);
+            placeSurface(world, x, z, material);
+        }
+    }
+
+    private void buildRuinSilhouette(World world, int cx, int cz) {
+        for (int[] offset : new int[][] {{-15, -11}, {15, -11}, {-15, 12}, {15, 12}}) {
+            int x = cx + offset[0];
+            int z = cz + offset[1];
+            int ground = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+            for (int y = 1; y <= 5; y++) {
+                world.getBlockAt(x, ground + y, z).setType(
+                        y == 5 ? Material.CRYING_OBSIDIAN : Material.DEEPSLATE_BRICKS,
+                        false);
+            }
+            world.getBlockAt(x, ground + 6, z).setType(Material.SOUL_LANTERN, false);
+        }
+        for (int angle = 0; angle < 360; angle += 15) {
+            double radians = Math.toRadians(angle);
+            int x = cx + (int) Math.round(Math.cos(radians) * 5.0);
+            int z = cz + (int) Math.round(Math.sin(radians) * 5.0);
+            Material material = angle % 45 == 0
+                    ? Material.CHISELED_DEEPSLATE
+                    : Material.CRACKED_DEEPSLATE_BRICKS;
             placeSurface(world, x, z, material);
         }
     }
@@ -475,6 +518,7 @@ final class ExpeditionService {
             vault.getWorld().spawnParticle(
                     Particle.TOTEM_OF_UNDYING, vault.clone().add(0.5, 1.2, 0.5),
                     32, 0.7, 0.8, 0.7);
+            cinematics.onVaultOpened(vault);
         }
         Bukkit.broadcastMessage(ChatColor.GOLD + "RUIN: The vault seal is broken.");
     }
@@ -491,6 +535,14 @@ final class ExpeditionService {
         }
         for (Player player : rewarded) {
             player.giveExp(plugin.getConfig().getInt("expeditions.reward-experience", 350));
+            progression.grantXp(
+                    player,
+                    plugin.getConfig().getInt("progression.rewards.expedition-survivor-xp", 240),
+                    "ruin expedition");
+            legacies.grantRaidXp(
+                    player,
+                    plugin.getConfig().getInt("legacy.rewards.expedition-xp", 90),
+                    "ruin expedition");
             giveOrDrop(player, new ItemStack(Material.EMERALD, 8));
             giveOrDrop(player, new ItemStack(Material.EXPERIENCE_BOTTLE, 6));
             giveOrDrop(player, new ItemStack(Material.AMETHYST_SHARD, 6));
@@ -513,6 +565,7 @@ final class ExpeditionService {
         if (vault != null) {
             vault.getBlock().setType(Material.CHEST, false);
             vault.getWorld().playSound(vault, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 0.9f);
+            cinematics.onVaultClaimed(vault, rewarded);
         }
         save();
     }

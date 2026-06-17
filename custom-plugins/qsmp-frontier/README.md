@@ -14,6 +14,15 @@ feature without installing mods.
   shield to parry.
 - Craft a Tactical Whistle. Right-click air or a block to cycle Vanguard,
   Ranger, Medic, and Gatherer; right-click an owned companion to assign it.
+- Shift-right-click the Frontier Codex to open the Codex GUI. Survivor stats and
+  Legacy gear management are handled from GUI screens, not chat stat dumps.
+- Eligible weapons, tools, armor, shields, and elytra receive Legacy data
+  automatically when picked up, moved, or equipped. `/legacy bind` is only a
+  compatibility fallback.
+- Legacy levels/refine now change actual play: final damage, attack speed,
+  mining speed, durability-save chance, and armor reduction are shown on item
+  lore. Refine can fail, high refine consumes Void Scales, and awakened gear can
+  trigger Void Burst.
 - Craft and place Lumber, Quarry, Mine, Ranch, Greenhouse, Fishery, and Warehouse
   cores. Right-click a site with tier II or III upgrade kits to improve it.
 - Production enters the site's barrel. Overflow routes to an owned or public

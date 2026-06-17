@@ -4,6 +4,39 @@ combat:
   roll-invulnerability-ms: 475
   roll-cooldown-ms: 2600
   roll-horizontal-speed: 1.15
+  mob-no-damage-ticks: 0
+  player-no-damage-ticks: 2
+
+cinematics:
+  enabled: true
+  compass-trails: true
+
+resource-pack:
+  enabled: true
+  required: true
+  serve: true
+  bind-address: "0.0.0.0"
+  port: 25566
+  public-url: "http://127.0.0.1:25566/qsmp-frontier-pack.zip"
+  id: "fcf8aaa7-3ad6-58fc-b6cd-0cf6c1cc9a16"
+  pack-path: "resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.zip"
+  prompt: "QSMP Frontier required pack: realistic frontier textures, cinematic UI, raid/dragon sound layers."
+
+enchanting:
+  enabled: true
+  max-level: 10
+  single-level:
+    - "minecraft:mending"
+    - "minecraft:infinity"
+    - "minecraft:flame"
+    - "minecraft:silk_touch"
+    - "minecraft:aqua_affinity"
+    - "minecraft:channeling"
+    - "minecraft:multishot"
+    - "minecraft:binding_curse"
+    - "minecraft:vanishing_curse"
+  anvil:
+    maximum-repair-cost: 999999
 
 companions:
   tactical-radius: 28.0
@@ -19,6 +52,108 @@ outposts:
   production-interval-ticks: 1200
   gatherer-radius: 10.0
   warehouse-radius: 64.0
+
+progression:
+  enabled: true
+  max-level: 30
+  stat-cap: 20
+  base-next-level-xp: 120
+  next-level-xp-growth: 40
+  stats:
+    might-damage: 0.02
+    endurance-health: 1.0
+    endurance-damage-reduction: 0.01
+    agility-speed-scalar: 0.004
+    agility-roll-cooldown-reduction: 0.025
+    agility-fall-reduction: 0.025
+    wisdom-legacy-xp: 0.025
+    command-outpost-production: 0.025
+  rewards:
+    warfront-survivor-xp: 650
+    expedition-survivor-xp: 240
+    outpost-upgrade-survivor-xp: 90
+    ender-dragon-survivor-xp: 1500
+    wither-survivor-xp: 900
+    hunting:
+      enabled: true
+      hostile-mob-xp: 14
+      frontier-mob-xp: 22
+    gather:
+      enabled: true
+      common-xp: 1
+      common-cooldown-ms: 1200
+      ore-xp: 8
+      ancient-debris-xp: 24
+      log-xp: 2
+      crop-xp: 2
+
+legacy:
+  max-level: 10
+  base-next-level-xp: 80
+  next-level-xp-growth: 45
+  combat-xp-per-damage: 0.35
+  kill-xp: 8
+  frontier-kill-xp: 10
+  boss-kill-xp: 180
+  weapon-damage-per-level: 0.04
+  attack-speed-per-level: 0.012
+  mining-speed-per-level: 0.035
+  durability-save-per-level: 0.015
+  durability-save-cap: 0.55
+  armor-xp-per-damage: 0.25
+  armor-reduction-per-level: 0.01
+  armor-reduction-cap: 0.45
+  refine:
+    max: 5
+    base-scrap-cost: 1
+    failure-chance-base: 0.10
+    failure-chance-per-refine: 0.07
+    failure-xp: 35
+    failure-durability-damage: 18
+    void-scale-cost-from: 3
+    void-scale-cost-per-tier: 1
+    weapon-damage-per-refine: 0.05
+    attack-speed-per-refine: 0.02
+    mining-speed-per-refine: 0.05
+    durability-save-per-refine: 0.04
+    armor-reduction-per-refine: 0.012
+  awakening:
+    weapon-damage: 0.15
+    attack-speed: 0.08
+    mining-speed: 0.15
+    durability-save: 0.12
+    armor-reduction: 0.05
+    void-burst-chance: 0.18
+    void-burst-damage-multiplier: 0.20
+  transfer:
+    level-penalty: 2
+  block-xp:
+    ore: 8
+    ancient-debris: 24
+    log: 2
+  rewards:
+    warfront-xp: 220
+    expedition-xp: 90
+    ender-dragon-xp: 500
+    wither-xp: 300
+
+dragon:
+  enabled: true
+  base-health: 450.0
+  health-per-extra-player: 180.0
+  damage-per-extra-player: 0.08
+  damage-per-phase: 0.08
+  reward-radius: 192.0
+  phase-one-health-ratio: 0.65
+  phase-two-health-ratio: 0.35
+  resonance-stones: 3
+  resonance-radius: 42.0
+  resonance-shield-damage-multiplier: 0.25
+  minion-cooldown-ticks: 240
+  minions-per-phase: 2
+  rewards:
+    void-scale: 4
+    ender-core-chance: 0.35
 
 warfront:
   build-blocks-per-tick: 3000

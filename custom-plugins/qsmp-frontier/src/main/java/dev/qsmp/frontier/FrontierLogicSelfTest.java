@@ -11,6 +11,12 @@ public final class FrontierLogicSelfTest {
         require(FrontierMath.sentinelHealth(2, 24.0, 6.0) == 36.0, "expedition scaling");
         require(FrontierMath.gatherMultiplier(1) > 1.0, "gatherer base bonus");
         require(FrontierMath.gatherMultiplier(100) == 2.5, "gatherer cap");
+        require(FrontierMath.survivorNextXp(1, 120, 40) == 120, "survivor xp base");
+        require(FrontierMath.survivorNextXp(4, 120, 40) == 240, "survivor xp growth");
+        require(FrontierMath.legacyNextXp(3, 80, 45) == 170, "legacy xp growth");
+        require(FrontierMath.mergedEnchantLevel(5, 5, 10) == 6, "enchant anvil combines equal levels");
+        require(FrontierMath.mergedEnchantLevel(9, 10, 10) == 10, "enchant anvil respects configured cap");
+        require(FrontierMath.mergedEnchantLevel(1, 1, 1) == 1, "single-level enchants stay single");
         require(FrontierMath.withinWindow(1300L, 1000L, 425L), "active timing window");
         require(!FrontierMath.withinWindow(1500L, 1000L, 425L), "expired timing window");
         int[] firstSite = FrontierMath.siteOffset(123456789L, 700, 1100);

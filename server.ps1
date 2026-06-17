@@ -36,6 +36,8 @@ function Read-ServerConfig {
         MIN_MEMORY = "2G"
         MAX_MEMORY = "4G"
         SERVER_JAR = "server.jar"
+        PYTHON_CMD = "python3"
+        RESOURCE_PACK_PUBLIC_URL = "http://127.0.0.1:25566/qsmp-frontier-pack.zip"
     }
 
     foreach ($entry in $defaults.GetEnumerator()) {
@@ -101,6 +103,16 @@ function Assert-Java {
 
     if (-not (Test-Java -JavaCommand $JavaCommand)) {
         throw "Install Java 25, then run this command again."
+    }
+}
+
+function Build-ResourcePack {
+    param([hashtable]$Config)
+
+    $env:RESOURCE_PACK_PUBLIC_URL = $Config["RESOURCE_PACK_PUBLIC_URL"]
+    & $Config["PYTHON_CMD"] (Join-Path $RootDir "scripts\build_resource_pack.py") --apply-server-properties
+    if ($LASTEXITCODE -ne 0) {
+        throw "Resource pack build failed with code $LASTEXITCODE."
     }
 }
 
@@ -269,6 +281,8 @@ function Start-Server {
     if (Test-ServerRunning) {
         throw "The server appears to already be running."
     }
+
+    Build-ResourcePack -Config $Config
 
     & $Config["JAVA_CMD"] (Join-Path $RootDir "scripts\CustomPluginBuilder.java")
     if ($LASTEXITCODE -ne 0) {

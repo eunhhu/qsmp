@@ -24,6 +24,8 @@ load_config() {
   : "${MIN_MEMORY:=2G}"
   : "${MAX_MEMORY:=4G}"
   : "${SERVER_JAR:=server.jar}"
+  : "${PYTHON_CMD:=python3}"
+  : "${RESOURCE_PACK_PUBLIC_URL:=http://127.0.0.1:25566/qsmp-frontier-pack.zip}"
 
   JAR_PATH="$ROOT_DIR/$SERVER_JAR"
   resolve_java
@@ -74,6 +76,14 @@ check_java() {
 
 require_java() {
   check_java || fail "Install Java 25, then run this command again."
+}
+
+build_resource_pack() {
+  command -v "$PYTHON_CMD" >/dev/null 2>&1 \
+    || fail "Python command not found: $PYTHON_CMD"
+  export RESOURCE_PACK_PUBLIC_URL
+  RESOURCE_PACK_PUBLIC_URL="$RESOURCE_PACK_PUBLIC_URL" \
+    "$PYTHON_CMD" "$ROOT_DIR/scripts/build_resource_pack.py" --apply-server-properties
 }
 
 server_is_running() {
@@ -194,6 +204,7 @@ start_server() {
   require_java
   eula_is_accepted || fail "Read https://aka.ms/MinecraftEULA and set eula=true in eula.txt."
   server_is_running && fail "The server appears to already be running."
+  build_resource_pack
   "$JAVA_CMD" "$ROOT_DIR/scripts/CustomPluginBuilder.java"
   "$JAVA_CMD" "$ROOT_DIR/scripts/WorldManager.java" inject
 

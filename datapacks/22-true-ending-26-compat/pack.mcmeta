@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "id": "qsmp_true_ending_26_compat",
+    "min_format": 101,
+    "max_format": 101,
+    "description": "QSMP compatibility overrides for True Ending on Minecraft 26.1"
+  }
+}

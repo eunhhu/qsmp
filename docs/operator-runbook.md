@@ -17,9 +17,9 @@
 - Java 25 OK
 - 서버 JAR 있음
 - EULA 동의됨
-- 서버 프로세스 stopped
+- 서버 프로세스 상태는 `./server.sh check` 기준으로 running/stopped 확인
 - 관리 플러그인 해시 OK
-- 관리 데이터팩 8개 injected
+- 관리 데이터팩 10개 injected
 
 ## 실제 기동 확인
 
@@ -34,14 +34,26 @@
 ```text
 datapack list enabled
 frontier status
+version QSMPFrontier
+survivor
+legacy
 tcp list
 ```
 
 기대:
 
-- `datapack list enabled`: Terralith, Terratonic, Continents, Dungeons and Taverns, Explorify, Structory, Nullscape, QSMP Rules 표시
+- `datapack list enabled`: Terralith, Terratonic, Continents, Dungeons and Taverns, Explorify, Structory, Nullscape, True Ending, True Ending 26 Compat, QSMP Rules 표시
 - `frontier status`: 전장 상태와 거점 수 표시
+- `version QSMPFrontier`: `1.4.0` 및 cinematic raids/dragon raids 포함 설명 표시
+- `survivor`: 플레이어만 실행 가능. 콘솔에서는 `Players only.`가 정상
+- `legacy`: 플레이어만 실행 가능. 콘솔에서는 `Players only.`가 정상
 - `tcp list`: 발견된 챔버 목록 표시
+
+플레이어 GUI QA:
+
+- `QSMP Codex` 웅크린 우클릭: `Battle Readiness`, `Warfront`, `Sealed Ruin`, `Survivor Level`, `Legacy Gear`, `Enchanting & Anvil`, `Outposts`, `End Raid`, `Required Resource Pack` 아이콘 표시
+- `/survivor`: `XP Routes`와 `Battle Readout` 아이콘 표시
+- `/legacy`: 들고 있는 장비의 레벨/XP/보너스/Refine/Awaken/Transfer 표시
 
 종료:
 
@@ -176,6 +188,142 @@ expeditions:
 
 ```text
 /frontier outpost pulse
+```
+
+Survivor 테스트:
+
+```text
+/survivor
+/survivor grant <player> <xp>
+/survivor respec
+```
+
+운영자 참고:
+
+- `/survivor grant`는 `qsmpfrontier.admin` 권한이 필요합니다.
+- `/survivor`는 `Survivor Core` GUI를 열며, 스탯 포인트는 아이콘 클릭으로 투자됩니다.
+- 데이터는 `plugins/QSMPFrontier/progression.yml`에 저장됩니다.
+- 리스펙 1회 이후에는 메아리 조각 1개가 필요합니다.
+- 일반 사냥 XP는 자연 스폰 적대몹만 지급합니다. 스포너, 스폰 알, 명령,
+  커스텀 스폰은 제외됩니다.
+- 일반 채집 XP는 광물/고대 잔해/자연 석재 계열/원목/성숙 작물에 지급됩니다.
+  플레이어가 방금 설치한 블록은 재채굴 XP를 주지 않습니다.
+
+인챈트/모루 테스트:
+
+```text
+/give <player> diamond_sword[enchantments={levels:{"minecraft:sharpness":5}}]
+```
+
+운영자 참고:
+
+- `purpur.yml`에서 고레벨 인챈트 clamp를 끄고 unsafe enchant 명령을 허용합니다.
+- `purpur.yml`에서 모루 누적 비용도 꺼 기존 작업 횟수 때문에 장비가 막히지 않게 합니다.
+- `QSMPFrontier`는 모루 결과를 보정해 스케일형 인챈트 10레벨까지 유지합니다.
+- 단일성 인챈트 목록은 `plugins/QSMPFrontier/config.yml`의
+  `enchanting.single-level`에 있습니다.
+- 기존 lore의 `버그 인챈트`/`Bug Enchant`/`Illegal Enchant` 표기는 플레이어
+  접속, 픽업, 모루 사용, 인벤토리 닫기, 10초 주기 점검 뒤 자동 제거됩니다.
+- 정리된 플레이어에게는 액션바와 인챈트 테이블 소리가 3초 쿨다운으로 표시됩니다.
+
+Legacy 테스트:
+
+```text
+/legacy
+/legacy refine
+/legacy awaken
+/legacy transfer
+```
+
+운영자 참고:
+
+- Legacy 데이터는 아이템 PDC와 lore에 저장됩니다.
+- 무기/도구/방어구/방패/활/쇠뇌/삼지창/메이스가 대상입니다.
+- 대상 아이템은 인벤토리 합류, 픽업, 핫바 이동, 장착/교체 뒤 자동으로 Legacy가 붙습니다.
+- 워프론트/유적/드래곤/위더 보상은 장착 장비에 Legacy XP를 줍니다.
+- Legacy lore에는 피해/공속/채굴/내구/방어 보너스와 refine 실패 확률이 표시됩니다.
+- `/legacy refine`은 네더라이트 조각을 소모합니다. +3부터는 Void Scale도 소모합니다.
+- Refine 실패는 재료를 소모하고 내구도를 손상시키지만 장비를 파괴하지 않으며, 실패 XP를 지급합니다.
+- Legacy Lv.5 이상 장비는 낮은 타격/채굴 공명, Refine +3 이상 장비는 강한 공명/번개 연출을 냅니다.
+- `/legacy awaken`은 Dragon Heart를 소모하고 Void Burst 전투 발동 효과를 붙입니다.
+- `/legacy transfer`는 Memory Shard를 소모하고, 메인핸드 원본 장비는 유지하며,
+  오프핸드 장비의 기존 Legacy 기억은 덮어씁니다.
+- `/legacy bind`는 호환용으로만 남아 있으며 일반 안내/탭완성에는 노출하지 않습니다.
+
+전투 무적 틱:
+
+- `combat.mob-no-damage-ticks`: 기본 `0`, 몹은 피격 후 무적 시간이 없습니다.
+- `combat.player-no-damage-ticks`: 기본 `2`, 플레이어는 피격 후 2틱만 보호됩니다.
+
+드래곤 레이드 참고:
+
+```yaml
+dragon:
+  enabled: true
+  phase-one-health-ratio: 0.65
+  phase-two-health-ratio: 0.35
+  resonance-stones: 3
+  resonance-shield-damage-multiplier: 0.25
+```
+
+- True Ending 데이터팩 위에 QSMPFrontier가 체력/피해 스케일과 공명석 페이즈를 얹습니다.
+- 드래곤이 죽거나 서버가 꺼지면 공명석 블록은 정리됩니다.
+- 처치 보상 `Dragon Heart`, `Void Scale`, `Memory Shard`, 확률 `Ender Core`는 `FrontierItems` PDC 커스텀 아이템입니다.
+- `Dragon Heart`: `/legacy awaken`
+- `Void Scale`: refine +3 이상, `Memory Shard` 제작
+- `Memory Shard`: `/legacy transfer`
+- `Ender Core`: `Outpost Upgrade Kit III` 추가 제작법
+
+Codex/인게임 안내 참고:
+
+- 플레이어 첫 접속 시 `Frontier Compass`와 `QSMP Codex`가 1회 지급됩니다.
+- 이후 접속 때도 커스텀 제작법은 다시 discover 처리됩니다.
+- `QSMP Codex` 일반 우클릭은 written book, 웅크린 우클릭은 아이콘 GUI입니다.
+- GUI는 전장/유적 나침반 조율, Survivor/Legacy 확인, 거점 제작법 해금, 엔드 레이드 요약으로 연결됩니다.
+
+연출 설정:
+
+```yaml
+cinematics:
+  enabled: true
+  compass-trails: true
+```
+
+- `enabled: false`면 QSMPFrontier 연출 레이어를 끕니다.
+- `compass-trails: false`면 나침반 길잡이 파티클만 끕니다.
+- 성능 문제를 볼 때는 `compass-trails`만 먼저 끄는 편이 좋습니다.
+
+리소스팩 운영:
+
+```bash
+python3 scripts/build_resource_pack.py --apply-server-properties
+```
+
+결과:
+
+- `resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.zip`
+- `resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.sha1`
+- [server.properties](../server.properties)의 `require-resource-pack=true`
+- [server.properties](../server.properties)의 `resource-pack-prompt={"text":"..."}`
+- [server.properties](../server.properties)의 `resource-pack-sha1=<현재 SHA1>`
+
+서버 시작:
+
+- `./server.sh start`는 리소스팩을 자동 빌드하고 SHA1을 갱신합니다.
+- `QSMPFrontier`는 `resource-pack.port` 기본 `25566`에서 zip을 HTTP로 서빙합니다.
+- 접속 플레이어에게 required pack을 전송합니다.
+
+외부 접속 주의:
+
+- 기본 URL `http://127.0.0.1:25566/qsmp-frontier-pack.zip`은 서버 PC 로컬 테스트용입니다.
+- 친구들이 인터넷으로 들어오면 [server.env](../server.env)의 `RESOURCE_PACK_PUBLIC_URL`을 공인 IP/도메인으로 바꿉니다.
+- TCP `25566` 포트도 공유기/방화벽에서 열어야 합니다.
+
+확인:
+
+```bash
+curl -I http://127.0.0.1:25566/qsmp-frontier-pack.zip
+cat resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.sha1
 ```
 
 동료 역할 수리:
@@ -379,14 +527,19 @@ chunky cancel
 1. 서버 시작
 2. `datapack list enabled`로 데이터팩 활성 확인
 3. 새 청크 탐험
-4. `Frontier Compass` 우클릭 확인
-5. 동물 길들이기
-6. `/companion info` 또는 빈손 웅크리기 우클릭 확인
-7. `Tactical Whistle` 역할 순환/배정 확인
-8. 거점 코어 지급 후 설치 확인
-9. `/frontier outpost pulse`로 생산 확인
-10. 전장 주변 로드 후 자동 건설 확인
-11. 자연 트라이얼 챔버 발견 후 `/tcp list` 확인
+4. 필수 리소스팩 다운로드/적용 확인
+5. 첫 접속 지급품 `Frontier Compass`, `QSMP Codex` 확인
+6. `QSMP Codex` 일반 우클릭 책 열림 확인
+7. `QSMP Codex` 웅크린 우클릭 GUI 확인
+8. `Frontier Compass` 우클릭/웅크린 우클릭 확인
+9. 동물 길들이기
+10. `/companion info` 또는 빈손 웅크리기 우클릭 확인
+11. `Tactical Whistle` 역할 순환/배정 확인
+12. 거점 코어 지급 후 설치 확인
+13. `/frontier outpost pulse`로 생산 확인
+14. 전장 주변 로드 후 자동 건설 확인
+15. 엔더 드래곤 전투에서 공명석 페이즈 확인
+16. 자연 트라이얼 챔버 발견 후 `/tcp list` 확인
 
 서버 로그에서 무시 가능한 것:
 
