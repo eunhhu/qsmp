@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -21,35 +22,58 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 final class FrontierListener implements Listener {
+    private final QSMPFrontier plugin;
     private final CombatService combat;
     private final CompanionRoleService roles;
     private final FrontierItems items;
     private final OutpostService outposts;
     private final WarfrontService warfront;
     private final ExpeditionService expeditions;
+    private final ProgressionService progression;
+    private final LegacyService legacies;
+    private final DragonService dragons;
+    private final FrontierGuideMenu guideMenu;
+    private final CinematicService cinematics;
 
     FrontierListener(
+            QSMPFrontier plugin,
             CombatService combat,
             CompanionRoleService roles,
             FrontierItems items,
             OutpostService outposts,
             WarfrontService warfront,
-            ExpeditionService expeditions) {
+            ExpeditionService expeditions,
+            ProgressionService progression,
+            LegacyService legacies,
+            DragonService dragons,
+            FrontierGuideMenu guideMenu,
+            CinematicService cinematics) {
+        this.plugin = plugin;
         this.combat = combat;
         this.roles = roles;
         this.items = items;
         this.outposts = outposts;
         this.warfront = warfront;
         this.expeditions = expeditions;
+        this.progression = progression;
+        this.legacies = legacies;
+        this.dragons = dragons;
+        this.guideMenu = guideMenu;
+        this.cinematics = cinematics;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -57,6 +81,11 @@ final class FrontierListener implements Listener {
         if (combat.startParry(event.getPlayer())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacySwap(PlayerSwapHandItemsEvent event) {
+        scheduleLegacySync(event.getPlayer());
     }
 
     @EventHandler
@@ -80,6 +109,14 @@ final class FrontierListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onUseFrontierItem(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        if (items.is(event.getItem(), FrontierItems.FRONTIER_CODEX)
+                && event.getPlayer().isSneaking()
+                && (event.getAction() == Action.RIGHT_CLICK_AIR
+                        || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+            event.setCancelled(true);
+            guideMenu.open(event.getPlayer());
             return;
         }
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK
@@ -115,12 +152,73 @@ final class FrontierListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        items.giveFieldCompassOnce(event.getPlayer());
+        items.giveStarterKit(event.getPlayer());
+        progression.onJoin(event.getPlayer());
+        legacies.ensureInventory(event.getPlayer());
+        cinematics.onJoin(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onMenuClick(InventoryClickEvent event) {
+        guideMenu.onClick(event);
+        progression.onClick(event);
+        legacies.onClick(event);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacyInventoryClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player player) {
+            scheduleLegacySync(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacyPickup(EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            scheduleLegacySync(player);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacyHeld(PlayerItemHeldEvent event) {
+        scheduleLegacySync(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacyItemDamage(PlayerItemDamageEvent event) {
+        legacies.onItemDamage(event);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacyBlockDamage(BlockDamageEvent event) {
+        legacies.onBlockDamage(event);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        progression.onQuit(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDamage(EntityDamageEvent event) {
-        combat.avoidDamage(event);
+        if (combat.avoidDamage(event) || event.isCancelled()) {
+            return;
+        }
+        progression.onIncomingDamage(event);
+        legacies.onIncomingDamage(event);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDamageWindow(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof LivingEntity entity)) {
+            return;
+        }
+        applyDamageWindow(entity);
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (entity.isValid()) {
+                applyDamageWindow(entity);
+            }
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -138,8 +236,11 @@ final class FrontierListener implements Listener {
         if (roles.isCompanion(event.getEntity())) {
             event.setDamage(event.getDamage() * roles.incomingMultiplier(event.getEntity()));
         }
+        dragons.onCombat(event, attacker);
         if (attacker instanceof Player player
                 && event.getEntity() instanceof LivingEntity target) {
+            progression.onOutgoingDamage(event, player);
+            legacies.onCombat(event, player, target);
             roles.signalTarget(player, target);
         }
         if (event.getEntity() instanceof Player player
@@ -152,10 +253,15 @@ final class FrontierListener implements Listener {
     public void onDeath(EntityDeathEvent event) {
         warfront.onDeath(event.getEntity());
         expeditions.onDeath(event);
+        legacies.onKill(event);
+        dragons.onDeath(event);
+        progression.onOrdinaryMobDeath(event);
+        progression.onVanillaBossDeath(event, legacies);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onOutpostPlace(BlockPlaceEvent event) {
+        progression.onBlockPlace(event);
         OutpostType type = items.outpostType(event.getItemInHand());
         if (type != null) {
             outposts.create(event.getPlayer(), event.getBlockPlaced(), type);
@@ -165,6 +271,10 @@ final class FrontierListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onOutpostBreak(BlockBreakEvent event) {
         if (expeditions.onBlockBreak(event)) {
+            return;
+        }
+        dragons.onBlockBreak(event);
+        if (event.isCancelled()) {
             return;
         }
         if (!outposts.isOutpost(event.getBlock())) {
@@ -177,6 +287,12 @@ final class FrontierListener implements Listener {
             event.setDropItems(false);
             event.setExpToDrop(0);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLegacyBlockBreak(BlockBreakEvent event) {
+        progression.onNaturalBlockBreak(event);
+        legacies.onBlockBreak(event);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -231,5 +347,20 @@ final class FrontierListener implements Listener {
             return shooter;
         }
         return damager;
+    }
+
+    private void applyDamageWindow(LivingEntity entity) {
+        int ticks = entity instanceof Player
+                ? plugin.getConfig().getInt("combat.player-no-damage-ticks", 2)
+                : plugin.getConfig().getInt("combat.mob-no-damage-ticks", 0);
+        entity.setNoDamageTicks(Math.max(0, ticks));
+    }
+
+    private void scheduleLegacySync(Player player) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) {
+                legacies.tickPlayer(player);
+            }
+        });
     }
 }

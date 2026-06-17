@@ -29,6 +29,30 @@ final class FrontierMath {
         return Math.min(2.5, 1.25 + level * 0.04);
     }
 
+    static int survivorNextXp(int level, int base, int growth) {
+        int safeLevel = Math.max(1, level);
+        return Math.max(1, base + (safeLevel - 1) * Math.max(0, growth));
+    }
+
+    static int legacyNextXp(int level, int base, int growth) {
+        int safeLevel = Math.max(1, level);
+        return Math.max(1, base + (safeLevel - 1) * Math.max(0, growth));
+    }
+
+    static int mergedEnchantLevel(int leftLevel, int rightLevel, int maximumLevel) {
+        int maximum = Math.max(1, maximumLevel);
+        if (leftLevel <= 0) {
+            return Math.min(Math.max(0, rightLevel), maximum);
+        }
+        if (rightLevel <= 0) {
+            return Math.min(leftLevel, maximum);
+        }
+        int merged = leftLevel == rightLevel
+                ? leftLevel + 1
+                : Math.max(leftLevel, rightLevel);
+        return Math.min(merged, maximum);
+    }
+
     static boolean withinWindow(long now, long startedAt, long durationMs) {
         return startedAt > 0L && now >= startedAt && now - startedAt <= durationMs;
     }

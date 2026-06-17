@@ -126,6 +126,7 @@ final class WarfrontBuilder {
         buildFortress(plans, world, cx, cz);
         buildAlliedCamp(plans, world, cx, cz);
         buildBattlefieldCover(plans, world, cx, cz);
+        buildSignalMonuments(plans, world, cx, cz);
         return plans;
     }
 
@@ -228,6 +229,54 @@ final class WarfrontBuilder {
             }
             placeOnSurface(plans, world, cx + lane, cz + 32, Material.SOUL_CAMPFIRE);
         }
+    }
+
+    private void buildSignalMonuments(Queue<BlockPlan> plans, World world, int cx, int cz) {
+        for (int angle = 0; angle < 360; angle += 10) {
+            double radians = Math.toRadians(angle);
+            int x = cx + (int) Math.round(Math.cos(radians) * 9.0);
+            int z = cz + (int) Math.round(Math.sin(radians) * 9.0);
+            Material material = angle % 40 == 0
+                    ? Material.CRYING_OBSIDIAN
+                    : angle % 20 == 0 ? Material.CHISELED_DEEPSLATE : Material.POLISHED_BLACKSTONE;
+            placeOnSurface(plans, world, x, z, material);
+        }
+        for (int[] marker : new int[][] {{0, 9}, {0, -9}, {9, 0}, {-9, 0}}) {
+            int x = cx + marker[0];
+            int z = cz + marker[1];
+            int ground = surfaceY(world, x, z);
+            add(plans, x, ground + 2, z, Material.SOUL_LANTERN);
+        }
+        for (int lane : new int[] {-25, 0, 25}) {
+            buildLaneStandard(plans, world, cx + lane, cz - 32, Material.BLUE_BANNER);
+            buildLaneStandard(plans, world, cx + lane, cz + 28, Material.RED_BANNER);
+            for (int z = -30; z <= 30; z += 12) {
+                int ground = surfaceY(world, cx + lane, cz + z);
+                add(plans, cx + lane - 4, ground + 1, cz + z, Material.IRON_BARS);
+                add(plans, cx + lane + 4, ground + 1, cz + z, Material.IRON_BARS);
+            }
+        }
+        int gateZ = cz + 45;
+        for (int x : new int[] {-7, 7}) {
+            int ground = surfaceY(world, cx + x, gateZ - 2);
+            for (int y = 1; y <= 5; y++) {
+                add(plans, cx + x, ground + y, gateZ - 2,
+                        y == 5 ? Material.CRYING_OBSIDIAN : Material.POLISHED_BLACKSTONE_BRICKS);
+            }
+            add(plans, cx + x, ground + 6, gateZ - 2, Material.SOUL_LANTERN);
+        }
+    }
+
+    private void buildLaneStandard(
+            Queue<BlockPlan> plans,
+            World world,
+            int x,
+            int z,
+            Material banner) {
+        int ground = surfaceY(world, x, z);
+        add(plans, x, ground + 1, z, Material.DEEPSLATE_TILE_WALL);
+        add(plans, x, ground + 2, z, Material.DEEPSLATE_TILE_WALL);
+        add(plans, x, ground + 3, z, banner);
     }
 
     private int surfaceY(World world, int x, int z) {

@@ -46,11 +46,16 @@ plugins/TrialChamberPro/*
 # Custom plugin build output
 custom-plugins/*/build/
 
+# Generated resource pack output
+resourcepacks/*/build/
+
 # Source datapacks are local server content.
 datapacks/*
 !datapacks/README.md
 !datapacks/30-qsmp-rules/
 !datapacks/30-qsmp-rules/**
+!datapacks/22-true-ending-26-compat/
+!datapacks/22-true-ending-26-compat/**
 
 # Local backups
 backups/*

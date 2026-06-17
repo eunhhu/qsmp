@@ -44,6 +44,9 @@ final class WarfrontService {
     private final FrontierKeys keys;
     private final FrontierItems items;
     private final WarfrontBuilder builder;
+    private final ProgressionService progression;
+    private final LegacyService legacies;
+    private final CinematicService cinematics;
     private final File storageFile;
     private final Set<UUID> enemies = new HashSet<>();
     private final Set<UUID> allies = new HashSet<>();
@@ -72,11 +75,17 @@ final class WarfrontService {
             QSMPFrontier plugin,
             FrontierKeys keys,
             FrontierItems items,
-            WarfrontBuilder builder) {
+            WarfrontBuilder builder,
+            ProgressionService progression,
+            LegacyService legacies,
+            CinematicService cinematics) {
         this.plugin = plugin;
         this.keys = keys;
         this.items = items;
         this.builder = builder;
+        this.progression = progression;
+        this.legacies = legacies;
+        this.cinematics = cinematics;
         storageFile = new File(plugin.getDataFolder(), "warfront.yml");
     }
 
@@ -207,6 +216,7 @@ final class WarfrontService {
         Bukkit.broadcastMessage(ChatColor.DARK_RED
                 + "WARFRONT: The enemy host is advancing across three lanes.");
         spawnAllies();
+        cinematics.onWarfrontStart(center, startingPlayers);
         advance();
     }
 
@@ -342,6 +352,7 @@ final class WarfrontService {
                 plugin.getConfig().getInt("warfront.mobs-per-player", 3));
         Bukkit.broadcastMessage(ChatColor.RED + "Assault wave " + wave
                 + ChatColor.GRAY + ": " + size + " enemies across the field.");
+        cinematics.onWarfrontWave(center, wave);
         int[] lanes = {-25, 0, 25};
         for (int i = 0; i < size; i++) {
             int lane = lanes[i % lanes.length];
@@ -358,6 +369,7 @@ final class WarfrontService {
     private void spawnBreach() {
         Bukkit.broadcastMessage(ChatColor.DARK_RED
                 + "BREACH: Ravagers and evokers are breaking the center line.");
+        cinematics.onWarfrontBreach(center);
         for (int lane : new int[] {-25, 0, 25}) {
             spawnEnemy(EntityType.RAVAGER, lane, 37, 1.9);
             spawnEnemy(EntityType.EVOKER, lane - 3, 40, 1.6);
@@ -391,6 +403,7 @@ final class WarfrontService {
         }
         Bukkit.broadcastMessage(ChatColor.DARK_RED
                 + "BOSS: The Iron Tyrant enters the field with " + (int) maximum + " health.");
+        cinematics.onIronTyrantSpawn(spawn);
     }
 
     private void spawnEnemy(EntityType type, int offsetX, int offsetZ, double scale) {
@@ -463,12 +476,14 @@ final class WarfrontService {
         if (ratio <= 0.70 && bossPhase < 1) {
             bossPhase = 1;
             Bukkit.broadcastMessage(ChatColor.RED + "The Iron Tyrant calls its shield line.");
+            cinematics.onIronTyrantPhase(boss.getLocation(), bossPhase);
             spawnBossGuards(5, 1.8);
         }
         if (ratio <= 0.40 && bossPhase < 2) {
             bossPhase = 2;
             Bukkit.broadcastMessage(ChatColor.DARK_RED
                     + "The Iron Tyrant enrages and orders a final charge.");
+            cinematics.onIronTyrantPhase(boss.getLocation(), bossPhase);
             setBase(boss, Attribute.MOVEMENT_SPEED, 0.42);
             setBase(boss, Attribute.ATTACK_DAMAGE, 27.0 + raidPlayers * 2.0);
             spawnBossGuards(7, 2.0);
@@ -531,8 +546,18 @@ final class WarfrontService {
     private void complete() {
         Bukkit.broadcastMessage(ChatColor.GOLD
                 + "VICTORY: The Iron Tyrant has fallen and the warfront is secured.");
-        for (Player player : rewardPlayers()) {
+        List<Player> rewarded = rewardPlayers();
+        cinematics.onWarfrontVictory(center, rewarded);
+        for (Player player : rewarded) {
             player.giveExp(750);
+            progression.grantXp(
+                    player,
+                    plugin.getConfig().getInt("progression.rewards.warfront-survivor-xp", 650),
+                    "Warfront victory");
+            legacies.grantRaidXp(
+                    player,
+                    plugin.getConfig().getInt("legacy.rewards.warfront-xp", 220),
+                    "Warfront victory");
             player.getInventory().addItem(
                     new ItemStack(org.bukkit.Material.EMERALD, 12),
                     new ItemStack(org.bukkit.Material.NETHERITE_SCRAP, 2));
@@ -812,6 +837,7 @@ final class WarfrontService {
                 player.playSound(
                         player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 0.8f, 0.8f);
             }
+            cinematics.onWarfrontPrelude(nearbyPlayers(cancelRadius), remaining);
         }
         if (elapsed >= preludeSeconds * 1000L) {
             beginRaid();

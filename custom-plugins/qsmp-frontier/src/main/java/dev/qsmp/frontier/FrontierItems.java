@@ -11,14 +11,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.RecipeChoice;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ShapelessRecipe;
+import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 final class FrontierItems {
     static final String TACTICAL_WHISTLE = "tactical_whistle";
     static final String FIELD_COMPASS = "field_compass";
+    static final String FRONTIER_CODEX = "frontier_codex";
     static final String UPGRADE_TIER_2 = "outpost_upgrade_2";
     static final String UPGRADE_TIER_3 = "outpost_upgrade_3";
+    static final String DRAGON_HEART = "dragon_heart";
+    static final String VOID_SCALE = "void_scale";
+    static final String ENDER_CORE = "ender_core";
+    static final String MEMORY_SHARD = "memory_shard";
+    static final String ENDER_UPGRADE_TIER_3 = "outpost_upgrade_3_ender_core";
 
     private final QSMPFrontier plugin;
     private final FrontierKeys keys;
@@ -64,6 +71,60 @@ final class FrontierItems {
                         ChatColor.DARK_AQUA + "The raid begins when explorers enter the field."));
     }
 
+    ItemStack frontierCodex() {
+        ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
+        BookMeta meta = (BookMeta) book.getItemMeta();
+        meta.setTitle("QSMP Codex");
+        meta.setAuthor("Frontier Cartographers");
+        meta.setDisplayName(ChatColor.LIGHT_PURPLE + "QSMP Codex");
+        meta.setLore(List.of(
+                ChatColor.GRAY + "Right-click to read.",
+                ChatColor.GRAY + "Sneak-right-click to open the frontier guide.",
+                ChatColor.DARK_PURPLE + "Your in-world roadmap. No command memorization."));
+        meta.setPages(List.of(
+                ChatColor.DARK_PURPLE + "QSMP FRONTIER\n\n"
+                        + ChatColor.BLACK + "This SMP is not a lobby menu.\n\n"
+                        + "Use items, places, companions, and trophies. The world answers when you move.",
+                ChatColor.GOLD + "FIRST LOOP\n\n"
+                        + ChatColor.BLACK + "1. Keep the Frontier Compass.\n"
+                        + "2. Tame a companion.\n"
+                        + "3. Craft a Tactical Whistle.\n"
+                        + "4. Place an outpost.\n"
+                        + "5. Follow ruin signals.\n"
+                        + "6. Prepare for warfront raids.",
+                ChatColor.DARK_RED + "COMBAT\n\n"
+                        + ChatColor.BLACK + "Shield + swap hand: parry.\n"
+                        + "Sprint + sneak: dodge roll.\n\n"
+                        + "Timing creates openings. Legacy gear remembers victories.",
+                ChatColor.LIGHT_PURPLE + "LEGACY\n\n"
+                        + ChatColor.BLACK + "Legacy gear binds automatically.\n\n"
+                        + "Levels show damage, speed, mining, durability, or guard bonuses in lore.\n\n"
+                        + "Refine can fail. Void Scales stabilize high refine.",
+                ChatColor.AQUA + "COMPASS\n\n"
+                        + ChatColor.BLACK + "Right-click: warfront.\n"
+                        + "Sneak-right-click: sealed ruin.\n\n"
+                        + "Hold it while travelling. The compass now paints a short trail.",
+                ChatColor.DARK_AQUA + "RUINS\n\n"
+                        + ChatColor.BLACK + "Find Crying Obsidian ward anchors. Break every ward. Clear sentinels. Claim the vault as a party.",
+                ChatColor.DARK_RED + "WARFRONT\n\n"
+                        + ChatColor.BLACK + "Three lanes. Breach wave. Iron Tyrant.\n\n"
+                        + "Do not split forever. The field fails if abandoned.",
+                ChatColor.LIGHT_PURPLE + "END RAID\n\n"
+                        + ChatColor.BLACK + "True Ending changes the dragon. QSMP adds scaling, resonance stones, minions, and relic rewards.",
+                ChatColor.DARK_PURPLE + "DRAGON RELICS\n\n"
+                        + ChatColor.BLACK + "Dragon Heart awakens Legacy gear.\n"
+                        + "Void Scale fuels high refine and shard forging.\n"
+                        + "Ender Core forges upgrade kits.",
+                ChatColor.DARK_PURPLE + "CODEX GUI\n\n"
+                        + ChatColor.BLACK + "Sneak-right-click this book to open icon guidance: warfront, ruins, survivor, legacy, outposts, dragon."));
+        meta.setGeneration(BookMeta.Generation.ORIGINAL);
+        meta.getPersistentDataContainer().set(
+                keys.itemType, PersistentDataType.STRING, FRONTIER_CODEX);
+        meta.setEnchantmentGlintOverride(true);
+        book.setItemMeta(meta);
+        return book;
+    }
+
     ItemStack upgradeKit(int targetTier) {
         String type = targetTier == 2 ? UPGRADE_TIER_2 : UPGRADE_TIER_3;
         Material material = targetTier == 2 ? Material.IRON_BLOCK : Material.DIAMOND_BLOCK;
@@ -75,6 +136,49 @@ final class FrontierItems {
                         ChatColor.GRAY + "Right-click an owned outpost to install.",
                         ChatColor.AQUA + "Raises production and storage throughput.",
                         ChatColor.DARK_GRAY + "Target tier: " + targetTier));
+    }
+
+    ItemStack dragonHeart() {
+        return customItem(
+                Material.DRAGON_BREATH,
+                DRAGON_HEART,
+                ChatColor.LIGHT_PURPLE + "Dragon Heart",
+                List.of(
+                        ChatColor.GRAY + "A raid trophy from the awakened Ender Dragon.",
+                        ChatColor.DARK_PURPLE + "Awakens max-level Legacy gear."));
+    }
+
+    ItemStack voidScale(int amount) {
+        ItemStack item = customItem(
+                Material.ECHO_SHARD,
+                VOID_SCALE,
+                ChatColor.DARK_PURPLE + "Void Scale",
+                List.of(
+                        ChatColor.GRAY + "A hardened fragment of End resonance.",
+                        ChatColor.DARK_PURPLE + "Required for risky high-tier Legacy refine.",
+                        ChatColor.AQUA + "Can be forged into Memory Shards."));
+        item.setAmount(Math.max(1, amount));
+        return item;
+    }
+
+    ItemStack enderCore() {
+        return customItem(
+                Material.NETHER_STAR,
+                ENDER_CORE,
+                ChatColor.AQUA + "Ender Core",
+                List.of(
+                        ChatColor.GRAY + "Condensed arena energy from the final raid.",
+                        ChatColor.DARK_AQUA + "Forges outpost upgrade kits from End trophies."));
+    }
+
+    ItemStack memoryShard() {
+        return customItem(
+                Material.AMETHYST_SHARD,
+                MEMORY_SHARD,
+                ChatColor.AQUA + "Memory Shard",
+                List.of(
+                        ChatColor.GRAY + "Stores the echo of a hard-fought weapon.",
+                        ChatColor.DARK_AQUA + "Transfers Legacy memory between gear."));
     }
 
     String itemType(ItemStack item) {
@@ -125,17 +229,32 @@ final class FrontierItems {
         return next;
     }
 
-    void giveFieldCompassOnce(Player player) {
+    void giveStarterKit(Player player) {
         if (player.getPersistentDataContainer().has(
                 keys.fieldGuideGiven, PersistentDataType.BYTE)) {
-            return;
+            unlockRecipes(player);
+        } else {
+            player.getPersistentDataContainer().set(
+                    keys.fieldGuideGiven, PersistentDataType.BYTE, (byte) 1);
+            give(player, fieldCompass());
+            player.sendMessage(ChatColor.GOLD + "A Frontier Compass was added to your inventory.");
+            player.sendMessage(ChatColor.GRAY
+                    + "Right-click it for the battlefield; sneak-right-click it for a ruin expedition.");
         }
-        player.getPersistentDataContainer().set(
-                keys.fieldGuideGiven, PersistentDataType.BYTE, (byte) 1);
-        give(player, fieldCompass());
-        player.sendMessage(ChatColor.GOLD + "A Frontier Compass was added to your inventory.");
-        player.sendMessage(ChatColor.GRAY
-                + "Right-click it for the battlefield; sneak-right-click it for a ruin expedition.");
+        if (!player.getPersistentDataContainer().has(keys.codexGiven, PersistentDataType.BYTE)) {
+            player.getPersistentDataContainer().set(
+                    keys.codexGiven, PersistentDataType.BYTE, (byte) 1);
+            give(player, frontierCodex());
+            player.sendMessage(ChatColor.LIGHT_PURPLE
+                    + "QSMP Codex added. Sneak-right-click it for icon guidance.");
+        }
+        unlockRecipes(player);
+    }
+
+    void unlockRecipes(Player player) {
+        for (NamespacedKey key : recipeKeys()) {
+            player.discoverRecipe(key);
+        }
     }
 
     void give(Player player, ItemStack item) {
@@ -178,6 +297,13 @@ final class FrontierItems {
         compass.setIngredient('C', Material.COMPASS);
         Bukkit.addRecipe(compass, true);
 
+        ShapelessRecipe codex = new ShapelessRecipe(
+                new NamespacedKey(plugin, FRONTIER_CODEX), frontierCodex());
+        codex.addIngredient(Material.BOOK);
+        codex.addIngredient(Material.AMETHYST_SHARD);
+        codex.addIngredient(Material.COPPER_INGOT);
+        Bukkit.addRecipe(codex, true);
+
         ShapedRecipe tierTwo = new ShapedRecipe(
                 new NamespacedKey(plugin, UPGRADE_TIER_2), upgradeKit(2));
         tierTwo.shape("IRI", "RLR", "IRI");
@@ -192,6 +318,26 @@ final class FrontierItems {
         tierThree.addIngredient(4, Material.DIAMOND);
         tierThree.addIngredient(2, Material.NETHERITE_SCRAP);
         Bukkit.addRecipe(tierThree, true);
+
+        ItemStack enderUpgrade = upgradeKit(3);
+        enderUpgrade.setAmount(2);
+        ShapelessRecipe enderTierThree = new ShapelessRecipe(
+                new NamespacedKey(plugin, ENDER_UPGRADE_TIER_3), enderUpgrade);
+        enderTierThree.addIngredient(new RecipeChoice.ExactChoice(upgradeKit(2)));
+        enderTierThree.addIngredient(new RecipeChoice.ExactChoice(enderCore()));
+        enderTierThree.addIngredient(new RecipeChoice.ExactChoice(voidScale(1)));
+        enderTierThree.addIngredient(new RecipeChoice.ExactChoice(voidScale(1)));
+        Bukkit.addRecipe(enderTierThree, true);
+
+        ItemStack shardPair = memoryShard();
+        shardPair.setAmount(2);
+        ShapelessRecipe memoryShard = new ShapelessRecipe(
+                new NamespacedKey(plugin, MEMORY_SHARD), shardPair);
+        memoryShard.addIngredient(new RecipeChoice.ExactChoice(voidScale(1)));
+        memoryShard.addIngredient(Material.ECHO_SHARD);
+        memoryShard.addIngredient(Material.AMETHYST_SHARD);
+        memoryShard.addIngredient(Material.ENDER_PEARL);
+        Bukkit.addRecipe(memoryShard, true);
     }
 
     private void addOutpostRecipe(OutpostType type, Material shell, Material catalyst) {
@@ -204,6 +350,21 @@ final class FrontierItems {
         recipe.setIngredient('L', Material.LODESTONE);
         recipe.setIngredient('R', new RecipeChoice.MaterialChoice(type.icon()));
         Bukkit.addRecipe(recipe, true);
+    }
+
+    private List<NamespacedKey> recipeKeys() {
+        List<NamespacedKey> keys = new java.util.ArrayList<>();
+        keys.add(new NamespacedKey(plugin, TACTICAL_WHISTLE));
+        keys.add(new NamespacedKey(plugin, FIELD_COMPASS));
+        keys.add(new NamespacedKey(plugin, FRONTIER_CODEX));
+        keys.add(new NamespacedKey(plugin, UPGRADE_TIER_2));
+        keys.add(new NamespacedKey(plugin, UPGRADE_TIER_3));
+        keys.add(new NamespacedKey(plugin, ENDER_UPGRADE_TIER_3));
+        keys.add(new NamespacedKey(plugin, MEMORY_SHARD));
+        for (OutpostType type : OutpostType.values()) {
+            keys.add(new NamespacedKey(plugin, type.itemType()));
+        }
+        return keys;
     }
 
     private ItemStack customItem(

@@ -20,6 +20,8 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
     private final OutpostService outposts;
     private final WarfrontService warfront;
     private final ExpeditionService expeditions;
+    private final ProgressionService progression;
+    private final LegacyService legacies;
 
     FrontierCommand(
             QSMPFrontier plugin,
@@ -27,13 +29,17 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
             FrontierItems items,
             OutpostService outposts,
             WarfrontService warfront,
-            ExpeditionService expeditions) {
+            ExpeditionService expeditions,
+            ProgressionService progression,
+            LegacyService legacies) {
         this.plugin = plugin;
         this.roles = roles;
         this.items = items;
         this.outposts = outposts;
         this.warfront = warfront;
         this.expeditions = expeditions;
+        this.progression = progression;
+        this.legacies = legacies;
     }
 
     @Override
@@ -42,6 +48,12 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
             Command command,
             String label,
             String[] args) {
+        if (command.getName().equalsIgnoreCase("survivor")) {
+            return progression.command(sender, args);
+        }
+        if (command.getName().equalsIgnoreCase("legacy")) {
+            return legacies.command(sender, args);
+        }
         if (args.length == 0) {
             help(sender);
             return true;
@@ -52,6 +64,8 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
             case "outpost" -> outpost(sender, args);
             case "warfront" -> warfront(sender, args);
             case "expedition" -> expedition(sender, args);
+            case "survivor" -> progression.command(sender, tail(args));
+            case "legacy" -> legacies.command(sender, tail(args));
             case "status" -> status(sender);
             case "reload" -> reload(sender);
             default -> {
@@ -229,6 +243,10 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
                 + "Use the Frontier Compass, Tactical Whistle, and crafted outpost items.");
         sender.sendMessage(ChatColor.YELLOW + "/frontier status"
                 + ChatColor.GRAY + " - show raid and outpost state");
+        sender.sendMessage(ChatColor.YELLOW + "/survivor"
+                + ChatColor.GRAY + " - open the Survivor Core stat GUI");
+        sender.sendMessage(ChatColor.YELLOW + "/legacy"
+                + ChatColor.GRAY + " - open the Legacy Arsenal gear GUI");
         if (sender.hasPermission("qsmpfrontier.admin")) {
             sender.sendMessage(ChatColor.YELLOW + "/frontier role <role>"
                     + ChatColor.GRAY + " - operator repair fallback");
@@ -244,8 +262,14 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
             Command command,
             String alias,
             String[] args) {
+        if (command.getName().equalsIgnoreCase("survivor")) {
+            return progression.tab(sender, args);
+        }
+        if (command.getName().equalsIgnoreCase("legacy")) {
+            return legacies.tab(args);
+        }
         if (args.length == 1) {
-            List<String> choices = new ArrayList<>(List.of("status"));
+            List<String> choices = new ArrayList<>(List.of("status", "survivor", "legacy"));
             if (sender.hasPermission("qsmpfrontier.admin")) {
                 choices.add("role");
                 choices.add("give");
@@ -257,6 +281,14 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
                 choices.add("expedition");
             }
             return matching(choices, args[0]);
+        }
+        if (args.length >= 2
+                && args[0].equalsIgnoreCase("survivor")) {
+            return progression.tab(sender, tail(args));
+        }
+        if (args.length >= 2
+                && args[0].equalsIgnoreCase("legacy")) {
+            return legacies.tab(tail(args));
         }
         if (args.length == 2
                 && args[0].equalsIgnoreCase("role")
@@ -302,5 +334,14 @@ final class FrontierCommand implements CommandExecutor, TabCompleter {
         return choices.stream()
                 .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(prefix))
                 .toList();
+    }
+
+    private String[] tail(String[] args) {
+        if (args.length <= 1) {
+            return new String[0];
+        }
+        String[] result = new String[args.length - 1];
+        System.arraycopy(args, 1, result, 0, result.length);
+        return result;
     }
 }

@@ -141,10 +141,10 @@ settings:
     anvil:
       allow-inapplicable-enchants: false
       allow-incompatible-enchants: false
-      allow-higher-enchants-levels: false
+      allow-higher-enchants-levels: true
       replace-incompatible-enchants: false
-    allow-unsafe-enchant-command: false
-    clamp-levels: true
+    allow-unsafe-enchant-command: true
+    clamp-levels: false
   blocks:
     barrel:
       rows: 3
@@ -157,7 +157,7 @@ settings:
     beehive:
       max-bees-inside: 3
     anvil:
-      cumulative-cost: true
+      cumulative-cost: false
     snow:
       smooth-accumulation-step: 0
     lightning_rod:

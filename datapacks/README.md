@@ -21,6 +21,8 @@ The current server uses:
 - Explorify 1.6.5: additional vanilla-style exploration structures
 - Structory 1.3.15: atmospheric ruins, towers, and settlements
 - Nullscape 1.2.18: overhauled End terrain
+- True Ending 1.1.4d: overhauled Ender Dragon fight and finale
+- True Ending 26 Compat: fixes 26.1 `time_check` predicate schema for True Ending
 - QSMP Rules: skips the night when 50% of online players are sleeping
 
 Exact Modrinth version IDs and SHA-512 hashes are recorded in

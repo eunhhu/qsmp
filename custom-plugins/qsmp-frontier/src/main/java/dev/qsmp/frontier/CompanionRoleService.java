@@ -22,13 +22,15 @@ import org.bukkit.util.Vector;
 final class CompanionRoleService {
     private final QSMPFrontier plugin;
     private final FrontierKeys keys;
+    private final CinematicService cinematics;
     private final Map<UUID, UUID> ownerTargets = new HashMap<>();
     private final Map<UUID, Long> lastRangedAttack = new HashMap<>();
     private final Map<UUID, Long> lastHeal = new HashMap<>();
 
-    CompanionRoleService(QSMPFrontier plugin, FrontierKeys keys) {
+    CompanionRoleService(QSMPFrontier plugin, FrontierKeys keys, CinematicService cinematics) {
         this.plugin = plugin;
         this.keys = keys;
+        this.cinematics = cinematics;
     }
 
     UUID ownerId(Entity entity) {
@@ -73,6 +75,7 @@ final class CompanionRoleService {
         player.sendMessage(ChatColor.GOLD + entity.getName() + ChatColor.GRAY
                 + " is now " + ChatColor.AQUA + role.display()
                 + ChatColor.GRAY + ": " + role.description() + ".");
+        cinematics.onCompanionAssigned(player, entity, role);
         return true;
     }
 
@@ -166,6 +169,7 @@ final class CompanionRoleService {
         lastRangedAttack.put(companion.getUniqueId(), now);
         companion.getWorld().playSound(
                 companion.getLocation(), Sound.ENTITY_ARROW_SHOOT, 0.7f, 1.3f);
+        cinematics.onRangerShot(companion, target);
     }
 
     private void tickMedic(LivingEntity companion, Player owner, long now) {
@@ -187,6 +191,7 @@ final class CompanionRoleService {
                 Particle.HEART, companion.getLocation().add(0, 1.2, 0), 6, 0.6, 0.4, 0.6);
         companion.getWorld().playSound(
                 companion.getLocation(), Sound.BLOCK_BEACON_AMBIENT, 0.5f, 1.6f);
+        cinematics.onMedicPulse(companion);
         lastHeal.put(companion.getUniqueId(), now);
     }
 

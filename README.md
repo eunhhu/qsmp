@@ -13,6 +13,7 @@ Minecraft Java Edition `26.1.2`용 Purpur SMP 기본 구성입니다. 서버 쪽
 - Java 요구 버전: `25` 이상, 64비트
 - 메모리: 최소 `2G`, 최대 `4G`
 - 포트: `25565`
+- 필수 리소스팩 포트: `25566`
 - 최대 인원: `10`
 - 온라인 인증과 화이트리스트 활성화
 - 난이도 `normal`, 게임 모드 `survival`
@@ -99,6 +100,14 @@ whitelist add PlayerName
 포트 포워딩하고, 운영체제 방화벽에서도 해당 포트를 허용해야 합니다.
 공인 IP를 공개 채널에 올리지 마세요.
 
+QSMP 전용 리소스팩도 필수입니다. 외부 친구가 접속하려면 TCP `25566`도
+열고, [server.env](server.env)의 `RESOURCE_PACK_PUBLIC_URL`을 서버 공인
+IP나 도메인으로 바꿉니다.
+
+```text
+RESOURCE_PACK_PUBLIC_URL=http://your-domain.example:25566/qsmp-frontier-pack.zip
+```
+
 ## 데이터팩 자동 주입
 
 [datapacks](datapacks) 폴더에 데이터팩 ZIP 또는 압축을 푼 데이터팩 폴더를
@@ -171,6 +180,7 @@ Linux / macOS:
 - `LevelledMobs`: 야생 몹 1~50레벨, 거리·깊이·플레이어 진행도 기반 강화
 - `QSMPCompanions`: 동료 레벨, 범용 갑옷, 자가 재생, 크라이오포드
 - `QSMPFrontier`: 패링·구르기, 동료 역할, 자원 거점, 야외 전쟁 레이드
+- `QSMP resource pack`: 현실풍 텍스처, UI sprite, 전투/레이드 사운드 레이어
 
 Purpur에는 `spark` 프로파일러가 이미 포함되므로 별도 Spark JAR은 설치하지
 않습니다. ClearLag류 플러그인은 엔티티를 삭제하거나 게임 틱을 바꾸므로
