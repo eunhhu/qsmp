@@ -85,4 +85,6 @@ fi
 
 run_resource_pack_build
 "$JAVA_CMD" "$ROOT_DIR/scripts/CustomPluginBuilder.java"
+"$JAVA_CMD" -cp "$ROOT_DIR/custom-plugins/qsmp-frontier/build/classes" \
+  dev.qsmp.frontier.FrontierLogicSelfTest
 bash "$ROOT_DIR/server.sh" check

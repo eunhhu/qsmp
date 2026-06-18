@@ -17,6 +17,27 @@ public final class FrontierLogicSelfTest {
         require(FrontierMath.mergedEnchantLevel(5, 5, 10) == 6, "enchant anvil combines equal levels");
         require(FrontierMath.mergedEnchantLevel(9, 10, 10) == 10, "enchant anvil respects configured cap");
         require(FrontierMath.mergedEnchantLevel(1, 1, 1) == 1, "single-level enchants stay single");
+        require(FrontierMath.enchantCap(1, false, false, 10, 5) == 1,
+                "vanilla single-rank enchant cap stays one");
+        require(FrontierMath.enchantCap(5, false, true, 10, 5) == 10,
+                "mainline enchant cap uses global maximum");
+        require(FrontierMath.enchantCap(3, false, false, 10, 5) == 5,
+                "utility enchant cap uses side maximum");
+        require(FrontierMath.enchantCap(1, false, true, 10, 5) == 1,
+                "single-rank cap beats high-cap configuration");
+        require(!FrontierMath.hasAnvilOperation(false, false), "unchanged anvil input has no cost");
+        require(FrontierMath.hasAnvilOperation(true, false), "changed enchantment is an anvil operation");
+        require(FrontierMath.hasAnvilOperation(false, true), "vanilla rename or repair is an anvil operation");
+        require(FrontierMath.anvilMaximumRepairCost(999999) == 38, "anvil hard cap stays below 39");
+        require(FrontierMath.boundedAnvilCost(0, 14, 38, false) == 0, "unchanged anvil input stays free");
+        require(FrontierMath.boundedAnvilCost(120, 14, 38, true) == 38, "anvil cost is capped below 39");
+        require(FrontierMath.anvilOutputRepairPenalty() == 0, "anvil output prior-work penalty is reset");
+        double maxTempo = FrontierMath.legacyBonus(10, 5, 1, 0.012, 0.018, 0.05);
+        require(maxTempo >= 0.24, "max legacy tempo is noticeable");
+        double maxWork = FrontierMath.legacyBonus(10, 5, 1, 0.008, 0.020, 0.07);
+        require(maxWork >= 0.24, "max legacy mining speed is noticeable");
+        require(FrontierMath.legacyMiningEfficiencyBonus(maxWork) >= 1.0,
+                "legacy tools also gain mining efficiency attribute");
         require(FrontierMath.withinWindow(1300L, 1000L, 425L), "active timing window");
         require(!FrontierMath.withinWindow(1500L, 1000L, 425L), "expired timing window");
         int[] firstSite = FrontierMath.siteOffset(123456789L, 700, 1100);

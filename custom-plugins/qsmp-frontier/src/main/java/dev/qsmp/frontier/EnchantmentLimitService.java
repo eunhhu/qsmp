@@ -30,10 +30,23 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.Repairable;
 
 final class EnchantmentLimitService implements Listener {
     private static final int RESULT_SLOT = 2;
-    private static final int DEFAULT_MAXIMUM_REPAIR_COST = 999_999;
+    private static final int DEFAULT_MAXIMUM_REPAIR_COST = 38;
+    private static final int DEFAULT_SIDE_MAX_LEVEL = 5;
+    private static final Set<String> DEFAULT_HIGH_CAP_ENCHANTS = Set.of(
+            "minecraft:protection",
+            "minecraft:fire_protection",
+            "minecraft:blast_protection",
+            "minecraft:projectile_protection",
+            "minecraft:sharpness",
+            "minecraft:smite",
+            "minecraft:bane_of_arthropods",
+            "minecraft:efficiency",
+            "minecraft:unbreaking",
+            "minecraft:power");
     private static final Set<String> DEFAULT_SINGLE_LEVEL_ENCHANTS = Set.of(
             "minecraft:mending",
             "minecraft:infinity",
@@ -47,6 +60,9 @@ final class EnchantmentLimitService implements Listener {
 
     private final QSMPFrontier plugin;
     private final Map<UUID, Long> cleanupNoticeAt = new LinkedHashMap<>();
+
+    private record SanitizeResult(boolean itemChanged, boolean capChanged) {
+    }
 
     EnchantmentLimitService(QSMPFrontier plugin) {
         this.plugin = plugin;
@@ -63,21 +79,30 @@ final class EnchantmentLimitService implements Listener {
             return;
         }
         ItemStack right = event.getInventory().getSecondItem();
-        ItemStack base = event.getResult();
-        if (empty(base)) {
+        ItemStack eventResult = event.getResult();
+        if (empty(eventResult) && empty(right)) {
+            return;
+        }
+        ItemStack base;
+        if (empty(eventResult)) {
             base = left.clone();
         } else {
-            base = base.clone();
+            base = eventResult.clone();
         }
         Map<Enchantment, Integer> merged = mergedEnchantments(left, right, base);
         boolean changed = applyEnchantments(base, merged);
-        changed |= sanitize(base);
-        if (changed || !merged.isEmpty()) {
+        changed |= sanitize(base).capChanged();
+        changed |= resetRepairPenalty(base);
+        boolean vanillaOperation = !empty(eventResult) && event.getView().getRepairCost() > 0;
+        boolean hasOperation = FrontierMath.hasAnvilOperation(changed, vanillaOperation);
+        if (hasOperation) {
             event.setResult(base);
-            int cost = Math.max(event.getView().getRepairCost(), estimatedCost(merged));
-            if (cost > 0) {
-                event.getView().setRepairCost(Math.min(cost, maximumRepairCost()));
-            }
+            int cost = FrontierMath.boundedAnvilCost(
+                    event.getView().getRepairCost(),
+                    changed ? estimatedCost(merged) : 0,
+                    maximumRepairCost(),
+                    true);
+            event.getView().setRepairCost(cost);
         }
     }
 
@@ -119,7 +144,7 @@ final class EnchantmentLimitService implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPickup(EntityPickupItemEvent event) {
         if (event.getEntity() instanceof Player player) {
-            if (sanitize(event.getItem().getItemStack())) {
+            if (sanitize(event.getItem().getItemStack()).capChanged()) {
                 notifyCleanup(player);
             }
             scheduleInventorySanitize(player);
@@ -140,8 +165,11 @@ final class EnchantmentLimitService implements Listener {
         PlayerInventory inventory = player.getInventory();
         ItemStack[] storage = inventory.getStorageContents();
         boolean storageChanged = false;
+        boolean capChanged = false;
         for (ItemStack item : storage) {
-            storageChanged |= sanitize(item);
+            SanitizeResult sanitized = sanitize(item);
+            storageChanged |= sanitized.itemChanged();
+            capChanged |= sanitized.capChanged();
         }
         if (storageChanged) {
             inventory.setStorageContents(storage);
@@ -149,18 +177,20 @@ final class EnchantmentLimitService implements Listener {
         ItemStack[] armor = inventory.getArmorContents();
         boolean armorChanged = false;
         for (ItemStack item : armor) {
-            armorChanged |= sanitize(item);
+            SanitizeResult sanitized = sanitize(item);
+            armorChanged |= sanitized.itemChanged();
+            capChanged |= sanitized.capChanged();
         }
         if (armorChanged) {
             inventory.setArmorContents(armor);
         }
         ItemStack offHand = inventory.getItemInOffHand();
-        boolean offHandChanged = false;
-        if (sanitize(offHand)) {
+        SanitizeResult offHandSanitized = sanitize(offHand);
+        if (offHandSanitized.itemChanged()) {
             inventory.setItemInOffHand(offHand);
-            offHandChanged = true;
         }
-        return storageChanged || armorChanged || offHandChanged;
+        capChanged |= offHandSanitized.capChanged();
+        return capChanged;
     }
 
     void tickOnlinePlayers() {
@@ -193,9 +223,8 @@ final class EnchantmentLimitService implements Listener {
             return;
         }
         cleanupNoticeAt.put(player.getUniqueId(), now);
-        player.sendActionBar(ChatColor.AQUA
-                + "Enchantments synced to QSMP cap."
-                + ChatColor.GRAY + " Lv.10 scalable, single-rank kept Lv.1");
+        player.sendActionBar(ChatColor.AQUA + "Enchant caps normalized."
+                + ChatColor.GRAY + " Main Lv.10, utility Lv.5, single Lv.1");
         player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.22f, 1.45f);
     }
 
@@ -268,34 +297,39 @@ final class EnchantmentLimitService implements Listener {
         return changed;
     }
 
-    private boolean sanitize(ItemStack item) {
+    private SanitizeResult sanitize(ItemStack item) {
+        if (empty(item)) {
+            return new SanitizeResult(false, false);
+        }
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return new SanitizeResult(false, false);
+        }
+        boolean capChanged = normalizeDirectEnchants(meta);
+        if (meta instanceof EnchantmentStorageMeta storage) {
+            capChanged |= normalizeStoredEnchants(storage);
+        }
+        boolean loreChanged = cleanupGeneratedLore(meta);
+        if (capChanged || loreChanged) {
+            item.setItemMeta(meta);
+        }
+        return new SanitizeResult(capChanged || loreChanged, capChanged);
+    }
+
+    private boolean resetRepairPenalty(ItemStack item) {
         if (empty(item)) {
             return false;
         }
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
+        if (!(meta instanceof Repairable repairable) || !repairable.hasRepairCost()) {
             return false;
         }
-        boolean changed = normalizeDirectEnchants(meta);
-        if (meta instanceof EnchantmentStorageMeta storage) {
-            changed |= normalizeStoredEnchants(storage);
+        if (repairable.getRepairCost() == FrontierMath.anvilOutputRepairPenalty()) {
+            return false;
         }
-        if (meta.hasLore()) {
-            List<String> lore = meta.getLore();
-            if (lore != null) {
-                List<String> cleaned = lore.stream()
-                        .filter(line -> !bugEnchantLine(line))
-                        .toList();
-                if (cleaned.size() != lore.size()) {
-                    meta.setLore(cleaned.isEmpty() ? null : cleaned);
-                    changed = true;
-                }
-            }
-        }
-        if (changed) {
-            item.setItemMeta(meta);
-        }
-        return changed;
+        repairable.setRepairCost(FrontierMath.anvilOutputRepairPenalty());
+        item.setItemMeta(repairable);
+        return true;
     }
 
     private boolean normalizeDirectEnchants(ItemMeta meta) {
@@ -374,15 +408,30 @@ final class EnchantmentLimitService implements Listener {
     }
 
     private int maximumLevel(Enchantment enchantment) {
-        if (singleLevelEnchants().contains(key(enchantment))) {
-            return 1;
-        }
-        return Math.max(1, plugin.getConfig().getInt("enchanting.max-level", 10));
+        String enchantKey = key(enchantment);
+        return FrontierMath.enchantCap(
+                enchantment.getMaxLevel(),
+                singleLevelEnchants().contains(enchantKey),
+                highCapEnchants().contains(enchantKey),
+                plugin.getConfig().getInt("enchanting.max-level", 10),
+                sideMaximumLevel());
     }
 
     private int maximumRepairCost() {
-        return Math.max(40, plugin.getConfig()
+        return FrontierMath.anvilMaximumRepairCost(plugin.getConfig()
                 .getInt("enchanting.anvil.maximum-repair-cost", DEFAULT_MAXIMUM_REPAIR_COST));
+    }
+
+    private int sideMaximumLevel() {
+        return Math.max(1, plugin.getConfig().getInt("enchanting.side-max-level", DEFAULT_SIDE_MAX_LEVEL));
+    }
+
+    private Set<String> highCapEnchants() {
+        List<String> configured = plugin.getConfig().getStringList("enchanting.high-cap");
+        if (configured.isEmpty()) {
+            return DEFAULT_HIGH_CAP_ENCHANTS;
+        }
+        return configuredKeys(configured);
     }
 
     private Set<String> singleLevelEnchants() {
@@ -390,6 +439,10 @@ final class EnchantmentLimitService implements Listener {
         if (configured.isEmpty()) {
             return DEFAULT_SINGLE_LEVEL_ENCHANTS;
         }
+        return configuredKeys(configured);
+    }
+
+    private Set<String> configuredKeys(List<String> configured) {
         Set<String> keys = new HashSet<>();
         for (String value : configured) {
             keys.add(value.toLowerCase(Locale.ROOT));
@@ -418,6 +471,31 @@ final class EnchantmentLimitService implements Listener {
                 || lower.contains("invalid enchant")
                 || ((stripped.contains("버그") || stripped.contains("오류"))
                         && (stripped.contains("인첸") || stripped.contains("인챈")));
+    }
+
+    private boolean cleanupGeneratedLore(ItemMeta meta) {
+        if (!meta.hasLore()) {
+            return false;
+        }
+        List<String> lore = meta.getLore();
+        if (lore == null) {
+            return false;
+        }
+        List<String> cleaned = lore.stream()
+                .filter(line -> !bugEnchantLine(line) && !qsmpEnchantLine(line))
+                .toList();
+        if (cleaned.size() == lore.size()) {
+            return false;
+        }
+        meta.setLore(cleaned.isEmpty() ? null : cleaned);
+        return true;
+    }
+
+    private boolean qsmpEnchantLine(String line) {
+        String stripped = ChatColor.stripColor(line);
+        return stripped != null
+                && (stripped.startsWith("QSMP enchant:")
+                        || stripped.startsWith("QSMP detail:"));
     }
 
     private boolean empty(ItemStack item) {

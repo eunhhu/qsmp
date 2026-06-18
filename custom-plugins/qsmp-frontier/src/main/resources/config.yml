@@ -48,6 +48,18 @@ landmarks:
 enchanting:
   enabled: true
   max-level: 10
+  side-max-level: 5
+  high-cap:
+    - "minecraft:protection"
+    - "minecraft:fire_protection"
+    - "minecraft:blast_protection"
+    - "minecraft:projectile_protection"
+    - "minecraft:sharpness"
+    - "minecraft:smite"
+    - "minecraft:bane_of_arthropods"
+    - "minecraft:efficiency"
+    - "minecraft:unbreaking"
+    - "minecraft:power"
   single-level:
     - "minecraft:mending"
     - "minecraft:infinity"
@@ -59,7 +71,7 @@ enchanting:
     - "minecraft:binding_curse"
     - "minecraft:vanishing_curse"
   anvil:
-    maximum-repair-cost: 999999
+    maximum-repair-cost: 38
 
 companions:
   tactical-radius: 28.0
@@ -119,8 +131,8 @@ legacy:
   frontier-kill-xp: 10
   boss-kill-xp: 180
   weapon-damage-per-level: 0.01
-  attack-speed-per-level: 0.003
-  mining-speed-per-level: 0.001
+  attack-speed-per-level: 0.012
+  mining-speed-per-level: 0.008
   durability-save-per-level: 0.005
   durability-save-cap: 0.55
   armor-xp-per-damage: 0.25
@@ -136,14 +148,14 @@ legacy:
     void-scale-cost-from: 3
     void-scale-cost-per-tier: 1
     weapon-damage-per-refine: 0.025
-    attack-speed-per-refine: 0.008
-    mining-speed-per-refine: 0.01
+    attack-speed-per-refine: 0.018
+    mining-speed-per-refine: 0.020
     durability-save-per-refine: 0.015
     armor-reduction-per-refine: 0.005
   awakening:
     weapon-damage: 0.08
-    attack-speed: 0.03
-    mining-speed: 0.03
+    attack-speed: 0.05
+    mining-speed: 0.07
     durability-save: 0.06
     armor-reduction: 0.02
     void-burst-chance: 0.18
