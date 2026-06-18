@@ -1,4 +1,20 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "pillow==12.2.0",
+# ]
+# ///
+
+# --- How to run ---
+# 1. Install uv (if not installed):
+#      curl -LsSf https://astral.sh/uv/install.sh | sh
+# 2. Build the pack and update server.properties:
+#      uv run scripts/build_resource_pack.py --apply-server-properties
+# 3. Or make executable and run:
+#      chmod +x scripts/build_resource_pack.py && scripts/build_resource_pack.py --apply-server-properties
+# ---
+
 from __future__ import annotations
 
 import argparse
@@ -438,14 +454,34 @@ def update_server_properties(sha1: str) -> None:
     for line in lines:
         key = line.split("=", 1)[0] if "=" in line and not line.startswith("#") else None
         if key in replacements:
-            next_lines.append(f"{key}={replacements[key]}")
+            next_lines.append(f"{key}={property_value(replacements[key])}")
             seen.add(key)
         else:
             next_lines.append(line)
     for key, value in replacements.items():
         if key not in seen:
-            next_lines.append(f"{key}={value}")
+            next_lines.append(f"{key}={property_value(value)}")
     path.write_text("\n".join(next_lines) + "\n", encoding="utf-8")
+
+
+def property_value(value: str) -> str:
+    escaped: list[str] = []
+    for index, char in enumerate(value):
+        if char == "\\":
+            escaped.append("\\\\")
+        elif char == "\t":
+            escaped.append("\\t")
+        elif char == "\n":
+            escaped.append("\\n")
+        elif char == "\r":
+            escaped.append("\\r")
+        elif char == "\f":
+            escaped.append("\\f")
+        elif char in ":=#!" or (index == 0 and char == " "):
+            escaped.append("\\" + char)
+        else:
+            escaped.append(char)
+    return "".join(escaped)
 
 
 def write_json(path: Path, data: object) -> None:

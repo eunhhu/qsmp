@@ -17,10 +17,33 @@ resource-pack:
   serve: true
   bind-address: "0.0.0.0"
   port: 25566
-  public-url: "http://127.0.0.1:25566/qsmp-frontier-pack.zip"
+  public-url: "http://100.94.221.103:25566/qsmp-frontier-pack.zip"
   id: "fcf8aaa7-3ad6-58fc-b6cd-0cf6c1cc9a16"
   pack-path: "resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.zip"
   prompt: "QSMP Frontier required pack: realistic frontier textures, cinematic UI, raid/dragon sound layers."
+
+mob-nameplates:
+  enabled: true
+  update-interval-ticks: 40
+  level-health-step: 4.0
+
+landmarks:
+  enabled: true
+  blocks-per-tick: 2500
+  end-citadels:
+    enabled: true
+    region-chunks: 48
+    minimum-distance-chunks: 64
+    base-y: 88
+  nether-forges:
+    enabled: true
+    region-chunks: 32
+    minimum-distance-chunks: 24
+    base-y: 64
+  titan-arches:
+    enabled: true
+    region-chunks: 40
+    minimum-distance-chunks: 32
 
 enchanting:
   enabled: true
@@ -60,14 +83,14 @@ progression:
   base-next-level-xp: 120
   next-level-xp-growth: 40
   stats:
-    might-damage: 0.02
-    endurance-health: 1.0
-    endurance-damage-reduction: 0.01
-    agility-speed-scalar: 0.004
-    agility-roll-cooldown-reduction: 0.025
+    might-damage: 0.01
+    endurance-health: 0.5
+    endurance-damage-reduction: 0.005
+    agility-speed-scalar: 0.002
+    agility-roll-cooldown-reduction: 0.01
     agility-fall-reduction: 0.025
-    wisdom-legacy-xp: 0.025
-    command-outpost-production: 0.025
+    wisdom-legacy-xp: 0.01
+    command-outpost-production: 0.01
   rewards:
     warfront-survivor-xp: 650
     expedition-survivor-xp: 240
@@ -95,14 +118,14 @@ legacy:
   kill-xp: 8
   frontier-kill-xp: 10
   boss-kill-xp: 180
-  weapon-damage-per-level: 0.04
-  attack-speed-per-level: 0.012
-  mining-speed-per-level: 0.035
-  durability-save-per-level: 0.015
+  weapon-damage-per-level: 0.01
+  attack-speed-per-level: 0.003
+  mining-speed-per-level: 0.001
+  durability-save-per-level: 0.005
   durability-save-cap: 0.55
   armor-xp-per-damage: 0.25
-  armor-reduction-per-level: 0.01
-  armor-reduction-cap: 0.45
+  armor-reduction-per-level: 0.003
+  armor-reduction-cap: 0.25
   refine:
     max: 5
     base-scrap-cost: 1
@@ -112,17 +135,17 @@ legacy:
     failure-durability-damage: 18
     void-scale-cost-from: 3
     void-scale-cost-per-tier: 1
-    weapon-damage-per-refine: 0.05
-    attack-speed-per-refine: 0.02
-    mining-speed-per-refine: 0.05
-    durability-save-per-refine: 0.04
-    armor-reduction-per-refine: 0.012
+    weapon-damage-per-refine: 0.025
+    attack-speed-per-refine: 0.008
+    mining-speed-per-refine: 0.01
+    durability-save-per-refine: 0.015
+    armor-reduction-per-refine: 0.005
   awakening:
-    weapon-damage: 0.15
-    attack-speed: 0.08
-    mining-speed: 0.15
-    durability-save: 0.12
-    armor-reduction: 0.05
+    weapon-damage: 0.08
+    attack-speed: 0.03
+    mining-speed: 0.03
+    durability-save: 0.06
+    armor-reduction: 0.02
     void-burst-chance: 0.18
     void-burst-damage-multiplier: 0.20
   transfer:
@@ -144,10 +167,11 @@ dragon:
   damage-per-extra-player: 0.08
   damage-per-phase: 0.08
   reward-radius: 192.0
-  phase-one-health-ratio: 0.65
-  phase-two-health-ratio: 0.35
+  phase-one-health-ratio: 0.50
+  phase-two-health-ratio: 0.25
   resonance-stones: 3
   resonance-radius: 42.0
+  resonance-collapse-grace-ticks: 600
   resonance-shield-damage-multiplier: 0.25
   minion-cooldown-ticks: 240
   minions-per-phase: 2

@@ -19,6 +19,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.EnderDragon;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -38,6 +39,7 @@ final class DragonService {
     private UUID dragonId;
     private int phase;
     private long lastMinionSpawn;
+    private long nextResonanceAllowedAt;
 
     DragonService(
             QSMPFrontier plugin,
@@ -58,6 +60,7 @@ final class DragonService {
         if (dragon == null) {
             dragonId = null;
             phase = 0;
+            nextResonanceAllowedAt = 0L;
             cleanupResonance(true);
             return;
         }
@@ -105,6 +108,7 @@ final class DragonService {
         }
         event.setDropItems(false);
         event.setExpToDrop(0);
+        clearResonanceStone(main);
         event.getPlayer().getWorld().playSound(
                 main, Sound.BLOCK_BEACON_DEACTIVATE, 1.4f, 0.65f);
         cinematics.onDragonStoneBroken(event.getPlayer(), main, resonanceBlocks.size());
@@ -117,6 +121,8 @@ final class DragonService {
             event.getPlayer().getWorld().playSound(
                     event.getPlayer().getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.8f, 0.9f);
             cinematics.onDragonShieldCollapsed(main);
+            nextResonanceAllowedAt = System.currentTimeMillis() + Math.max(0L, plugin.getConfig()
+                    .getLong("dragon.resonance-collapse-grace-ticks", 600L)) * 50L;
         }
     }
 
@@ -127,6 +133,7 @@ final class DragonService {
         cleanupResonance(true);
         dragonId = null;
         phase = 0;
+        nextResonanceAllowedAt = 0L;
         if (!enabled()) {
             return;
         }
@@ -153,6 +160,7 @@ final class DragonService {
         cleanupResonance(true);
         dragonId = null;
         phase = 0;
+        nextResonanceAllowedAt = 0L;
     }
 
     private void configureDragon(EnderDragon dragon) {
@@ -204,6 +212,9 @@ final class DragonService {
         if (!resonanceBlocks.isEmpty()) {
             return;
         }
+        if (System.currentTimeMillis() < nextResonanceAllowedAt || arenaCrystalsAlive(dragon)) {
+            return;
+        }
         AttributeInstance health = dragon.getAttribute(Attribute.MAX_HEALTH);
         double maximum = health == null ? dragon.getHealth() : health.getValue();
         double ratio = maximum <= 0.0 ? 1.0 : dragon.getHealth() / maximum;
@@ -232,6 +243,16 @@ final class DragonService {
         world.playSound(new Location(world, 0.0, 80.0, 0.0),
                 Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.6f);
         cinematics.onDragonPhase(dragon, nextPhase, resonanceBlocks);
+    }
+
+    private boolean arenaCrystalsAlive(EnderDragon dragon) {
+        for (Entity entity : dragon.getWorld().getNearbyEntities(
+                dragon.getLocation(), 128.0, 128.0, 128.0)) {
+            if (entity instanceof EnderCrystal && entity.isValid() && !entity.isDead()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void placeResonanceStone(World world, double angle, double radius) {
@@ -342,7 +363,8 @@ final class DragonService {
     }
 
     private boolean isDragonSource(Entity attacker) {
-        return attacker instanceof EnderDragon || attacker.getType() == EntityType.DRAGON_FIREBALL;
+        return attacker instanceof EnderDragon
+                || (attacker != null && attacker.getType() == EntityType.DRAGON_FIREBALL);
     }
 
     private boolean enabled() {
@@ -367,5 +389,16 @@ final class DragonService {
             }
         }
         resonanceBlocks.clear();
+    }
+
+    private void clearResonanceStone(Location location) {
+        Block block = location.getBlock();
+        if (block.getType() == Material.CRYING_OBSIDIAN) {
+            block.setType(Material.AIR, false);
+        }
+        Block above = block.getRelative(BlockFace.UP);
+        if (above.getType() == Material.END_ROD) {
+            above.setType(Material.AIR, false);
+        }
     }
 }

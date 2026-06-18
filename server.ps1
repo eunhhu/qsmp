@@ -36,7 +36,7 @@ function Read-ServerConfig {
         MIN_MEMORY = "2G"
         MAX_MEMORY = "4G"
         SERVER_JAR = "server.jar"
-        PYTHON_CMD = "python3"
+        PYTHON_CMD = "uv"
         RESOURCE_PACK_PUBLIC_URL = "http://127.0.0.1:25566/qsmp-frontier-pack.zip"
     }
 
@@ -106,13 +106,44 @@ function Assert-Java {
     }
 }
 
+function Test-PythonTool {
+    param([string]$PythonCommand)
+
+    try {
+        & $PythonCommand --version 2>&1 | Out-Null
+    }
+    catch {
+        Write-Host "Resource pack builder: missing ($PythonCommand)"
+        return $false
+    }
+
+    Write-Host "Resource pack builder: $PythonCommand (OK)"
+    return $true
+}
+
 function Build-ResourcePack {
     param([hashtable]$Config)
 
     $env:RESOURCE_PACK_PUBLIC_URL = $Config["RESOURCE_PACK_PUBLIC_URL"]
-    & $Config["PYTHON_CMD"] (Join-Path $RootDir "scripts\build_resource_pack.py") --apply-server-properties
+    $pythonCommand = $Config["PYTHON_CMD"]
+    $pythonLeaf = [System.IO.Path]::GetFileName($pythonCommand)
+    if ($pythonLeaf -in @("uv", "uv.exe")) {
+        & $pythonCommand run (Join-Path $RootDir "scripts\build_resource_pack.py") --apply-server-properties
+    }
+    else {
+        & $pythonCommand (Join-Path $RootDir "scripts\build_resource_pack.py") --apply-server-properties
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Resource pack build failed with code $LASTEXITCODE."
+    }
+}
+
+function Install-Plugins {
+    param([hashtable]$Config)
+
+    & $Config["JAVA_CMD"] (Join-Path $RootDir "scripts\PluginManager.java") update
+    if ($LASTEXITCODE -ne 0) {
+        throw "Plugin install failed with code $LASTEXITCODE."
     }
 }
 
@@ -237,6 +268,13 @@ function Test-Server {
     if (-not (Test-Java -JavaCommand $Config["JAVA_CMD"])) {
         $status = 1
     }
+    if (-not (Test-PythonTool -PythonCommand $Config["PYTHON_CMD"])) {
+        $status = 1
+    }
+    & $Config["JAVA_CMD"] (Join-Path $RootDir "scripts\PluginManager.java") check
+    if ($LASTEXITCODE -ne 0) {
+        $status = 1
+    }
 
     if (Test-Path -LiteralPath $JarPath) {
         Write-Host "Server JAR: present ($($Config['SERVER_JAR']))"
@@ -282,6 +320,7 @@ function Start-Server {
         throw "The server appears to already be running."
     }
 
+    Install-Plugins -Config $Config
     Build-ResourcePack -Config $Config
 
     & $Config["JAVA_CMD"] (Join-Path $RootDir "scripts\CustomPluginBuilder.java")

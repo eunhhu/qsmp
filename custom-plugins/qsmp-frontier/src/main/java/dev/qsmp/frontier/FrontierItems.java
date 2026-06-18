@@ -240,6 +240,8 @@ final class FrontierItems {
             player.sendMessage(ChatColor.GOLD + "A Frontier Compass was added to your inventory.");
             player.sendMessage(ChatColor.GRAY
                     + "Right-click it for the battlefield; sneak-right-click it for a ruin expedition.");
+            player.sendMessage(ChatColor.AQUA
+                    + "Starter recipes unlocked: Cryopod, companion armor, whistle, codex, compass.");
         }
         if (!player.getPersistentDataContainer().has(keys.codexGiven, PersistentDataType.BYTE)) {
             player.getPersistentDataContainer().set(
@@ -247,6 +249,8 @@ final class FrontierItems {
             give(player, frontierCodex());
             player.sendMessage(ChatColor.LIGHT_PURPLE
                     + "QSMP Codex added. Sneak-right-click it for icon guidance.");
+            player.sendMessage(ChatColor.GRAY
+                    + "Use /survivor for stats, /legacy for gear, /companion for pets.");
         }
         unlockRecipes(player);
     }
@@ -364,6 +368,11 @@ final class FrontierItems {
         for (OutpostType type : OutpostType.values()) {
             keys.add(new NamespacedKey(plugin, type.itemType()));
         }
+        keys.add(new NamespacedKey("qsmpcompanions", "cryopod"));
+        keys.add(new NamespacedKey("qsmpcompanions", "iron_armor"));
+        keys.add(new NamespacedKey("qsmpcompanions", "diamond_armor"));
+        keys.add(new NamespacedKey("qsmpcompanions", "netherite_armor"));
+        keys.add(new NamespacedKey("qsmpcompanions", "bonding_charm"));
         return keys;
     }
 

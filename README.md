@@ -14,6 +14,7 @@ Minecraft Java Edition `26.1.2`용 Purpur SMP 기본 구성입니다. 서버 쪽
 - 메모리: 최소 `2G`, 최대 `4G`
 - 포트: `25565`
 - 필수 리소스팩 포트: `25566`
+- Python 도구 실행: `uv` (`scripts/build_resource_pack.py` 의존성 자동 고정)
 - 최대 인원: `10`
 - 온라인 인증과 화이트리스트 활성화
 - 난이도 `normal`, 게임 모드 `survival`
@@ -88,6 +89,23 @@ chmod +x server.sh
 ./server.sh start
 ```
 
+## CI와 유지보수 확인
+
+GitHub Actions는 push, pull request, 수동 실행 때 [scripts/ci.sh](scripts/ci.sh)를
+실행합니다. 이 스크립트는 fresh clone에서도 `server.env`와 `eula.txt`가 없으면
+CI 전용 기본값을 만들고, Purpur JAR 준비, 플러그인 매니저 self-test, 서버 업데이트
+회귀 테스트, 플러그인 검증, 리소스팩 빌드, 커스텀 플러그인 빌드, `server.sh check`를
+순서대로 수행합니다.
+
+로컬에서 운영 전 빠른 확인:
+
+```bash
+bash scripts/ci.sh
+```
+
+서버가 이미 실행 중이면 플러그인 다운로드 같은 중단 필요 작업은 건너뛰고 현재 상태를
+검사합니다. fresh clone이나 CI runner에서는 필요한 파일을 자동 준비합니다.
+
 ## 친구 접속 허용
 
 서버 콘솔에서 각 친구의 Java Edition 닉네임을 화이트리스트에 추가합니다.
@@ -110,9 +128,11 @@ RESOURCE_PACK_PUBLIC_URL=http://your-domain.example:25566/qsmp-frontier-pack.zip
 
 ## 데이터팩 자동 주입
 
-[datapacks](datapacks) 폴더에 데이터팩 ZIP 또는 압축을 푼 데이터팩 폴더를
-넣습니다. 각 팩의 최상위에는 `pack.mcmeta`가 있어야 합니다. 서버 시작
-직전에 자동 검증한 뒤 현재 월드의 `datapacks` 폴더로 동기화합니다.
+[datapacks.lock](datapacks.lock)에 고정된 Modrinth 데이터팩은 서버 시작,
+주입, 상태 확인 때 누락된 ZIP을 자동 다운로드하고 SHA-512로 검증합니다.
+[datapacks](datapacks) 폴더에 직접 넣은 ZIP 또는 압축을 푼 데이터팩
+폴더도 함께 관리합니다. 각 팩의 최상위에는 `pack.mcmeta`가 있어야 합니다.
+서버 시작 직전에 자동 검증한 뒤 현재 월드의 `datapacks` 폴더로 동기화합니다.
 맵을 리셋할 때도 백업과 삭제가 끝난 직후 같은 원본에서 다시 주입하므로,
 월드 폴더가 몇 번 바뀌어도 이 폴더의 데이터팩 구성은 유지됩니다.
 
@@ -139,6 +159,8 @@ RESOURCE_PACK_PUBLIC_URL=http://your-domain.example:25566/qsmp-frontier-pack.zip
 - `Explorify`: 바닐라 분위기의 추가 탐험 구조물
 - `Structory`: 폐허, 탑, 정착지 등 풍경 중심 구조물 추가
 - `Nullscape`: 엔드 지형과 바이옴 전면 개편
+- `True Ending`: 엔더 드래곤 전투와 엔딩 연출 개편
+- `True Ending 26 Compat`: Minecraft 26.1 predicate 호환 패치
 - `QSMP Rules`: 접속 인원의 50%가 잠들면 밤을 넘기는 영구 QoL 규칙
 
 정확한 버전과 해시는 [datapacks.lock](datapacks.lock)에 고정합니다.

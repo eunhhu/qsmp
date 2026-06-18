@@ -5,7 +5,7 @@ Required server resource pack for QSMP Frontier.
 Build:
 
 ```bash
-python3 scripts/build_resource_pack.py --apply-server-properties
+uv run scripts/build_resource_pack.py --apply-server-properties
 ```
 
 Output:
