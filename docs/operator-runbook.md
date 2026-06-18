@@ -7,10 +7,16 @@
 서버가 꺼진 상태에서:
 
 ```bash
+bash scripts/ci.sh
 ./server.sh check
 ./plugins.sh check
 ./world.sh check
 ```
+
+`scripts/ci.sh`는 CI와 로컬 공용 smoke test입니다. 서버가 실행 중이면 플러그인
+업데이트처럼 서버 중지가 필요한 단계는 건너뛰고, 서버가 꺼진 fresh runner에서는
+필요한 Purpur JAR과 플러그인을 준비한 뒤 리소스팩/커스텀 플러그인 빌드와
+`server.sh check`까지 확인합니다.
 
 현재 확인된 상태:
 
@@ -296,7 +302,7 @@ cinematics:
 리소스팩 운영:
 
 ```bash
-python3 scripts/build_resource_pack.py --apply-server-properties
+uv run scripts/build_resource_pack.py --apply-server-properties
 ```
 
 결과:

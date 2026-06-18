@@ -1,6 +1,10 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -8,11 +12,14 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
@@ -24,6 +31,7 @@ import java.util.zip.ZipOutputStream;
 public final class WorldManager {
     private static final Path ROOT = Path.of("").toAbsolutePath().normalize();
     private static final Path SOURCE = ROOT.resolve("datapacks");
+    private static final Path LOCK = ROOT.resolve("datapacks.lock");
     private static final Path STATE = ROOT.resolve(".managed-datapacks");
     private static final Path SERVER_LOCK = ROOT.resolve(".server-running");
     private static final Path BACKUPS = ROOT.resolve("backups").resolve("worlds");
@@ -31,6 +39,9 @@ public final class WorldManager {
             ROOT.resolve("plugins").resolve("TrialChamberPro");
     private static final Path FRONTIER_DATA =
             ROOT.resolve("plugins").resolve("QSMPFrontier");
+    private static final String USER_AGENT = "qsmp-bootstrap/1.0 (datapack setup)";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration DOWNLOAD_TIMEOUT = Duration.ofSeconds(120);
 
     public static void main(String[] args) {
         String action = args.length == 0 ? "check" : args[0];
@@ -167,6 +178,7 @@ public final class WorldManager {
 
     private static List<Pack> sourcePacks() throws Exception {
         Files.createDirectories(SOURCE);
+        ensureLockedDatapacks();
         List<Pack> packs = new ArrayList<>();
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(SOURCE)) {
             for (Path entry : entries) {
@@ -191,6 +203,152 @@ public final class WorldManager {
         }
         packs.sort(Comparator.comparing(Pack::name));
         return packs;
+    }
+
+    private static void ensureLockedDatapacks() throws Exception {
+        List<LockedDatapack> locked = lockedDatapacks();
+        if (locked.isEmpty()) {
+            return;
+        }
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
+        for (LockedDatapack pack : locked) {
+            Path target = SOURCE.resolve(pack.targetFile()).normalize();
+            requireDirectChild(SOURCE, target);
+            if (Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)) {
+                requireSha512(target, pack.sha512());
+                continue;
+            }
+            downloadLockedDatapack(client, pack, target);
+        }
+    }
+
+    private static List<LockedDatapack> lockedDatapacks() throws IOException {
+        if (!Files.isRegularFile(LOCK, LinkOption.NOFOLLOW_LINKS)) {
+            return List.of();
+        }
+        List<LockedDatapack> packs = new ArrayList<>();
+        for (String rawLine : Files.readAllLines(LOCK, StandardCharsets.UTF_8)) {
+            String line = rawLine.trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            String[] parts = line.split("\\|", -1);
+            if (parts.length != 5) {
+                throw new IOException("Invalid datapacks.lock line: " + line);
+            }
+            String targetFile = parts[3].trim();
+            if (!Path.of(targetFile).getFileName().toString().equals(targetFile)
+                    || !targetFile.toLowerCase().endsWith(".zip")) {
+                throw new IOException("Unsafe locked datapack target: " + targetFile);
+            }
+            String sha512 = parts[4].trim().toLowerCase();
+            if (!sha512.matches("[0-9a-f]{128}")) {
+                throw new IOException("Invalid SHA-512 in datapacks.lock for " + targetFile);
+            }
+            packs.add(new LockedDatapack(
+                    parts[0].trim(),
+                    parts[1].trim(),
+                    parts[2].trim(),
+                    targetFile,
+                    sha512));
+        }
+        return packs;
+    }
+
+    private static void downloadLockedDatapack(
+            HttpClient client,
+            LockedDatapack pack,
+            Path target) throws Exception {
+        System.out.println("Downloading datapack " + pack.slug() + " " + pack.version()
+                + " -> " + pack.targetFile());
+        URI download = lockedDownloadUri(client, pack);
+        Path temporary = SOURCE.resolve("." + pack.targetFile() + ".download").normalize();
+        requireDirectChild(SOURCE, temporary);
+        Files.deleteIfExists(temporary);
+        HttpRequest request = HttpRequest.newBuilder(download)
+                .header("User-Agent", USER_AGENT)
+                .timeout(DOWNLOAD_TIMEOUT)
+                .GET()
+                .build();
+        HttpResponse<Path> response =
+                client.send(request, HttpResponse.BodyHandlers.ofFile(temporary));
+        if (response.statusCode() != 200) {
+            Files.deleteIfExists(temporary);
+            throw new IOException("Datapack download returned HTTP " + response.statusCode()
+                    + " for " + pack.slug());
+        }
+        try {
+            validateZipPack(temporary);
+            requireSha512(temporary, pack.sha512());
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception exception) {
+            Files.deleteIfExists(temporary);
+            throw exception;
+        }
+    }
+
+    private static URI lockedDownloadUri(HttpClient client, LockedDatapack pack) throws Exception {
+        URI api = URI.create("https://api.modrinth.com/v2/version/" + pack.versionId());
+        HttpRequest request = HttpRequest.newBuilder(api)
+                .header("User-Agent", USER_AGENT)
+                .timeout(DOWNLOAD_TIMEOUT)
+                .GET()
+                .build();
+        HttpResponse<String> response =
+                client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() != 200) {
+            throw new IOException("Modrinth lookup returned HTTP " + response.statusCode()
+                    + " for " + pack.slug());
+        }
+        String json = response.body();
+        int hashIndex = json.indexOf(pack.sha512());
+        if (hashIndex < 0) {
+            throw new IOException("Locked SHA-512 was not found in Modrinth metadata for "
+                    + pack.slug());
+        }
+        int urlKey = json.indexOf("\"url\"", hashIndex);
+        if (urlKey < 0) {
+            throw new IOException("No download URL found in Modrinth metadata for " + pack.slug());
+        }
+        int colon = json.indexOf(':', urlKey);
+        int firstQuote = json.indexOf('"', colon + 1);
+        int secondQuote = json.indexOf('"', firstQuote + 1);
+        if (colon < 0 || firstQuote < 0 || secondQuote < 0) {
+            throw new IOException("Malformed download URL in Modrinth metadata for " + pack.slug());
+        }
+        return requireModrinthDownload(json.substring(firstQuote + 1, secondQuote));
+    }
+
+    private static URI requireModrinthDownload(String value) {
+        URI uri = URI.create(value);
+        if (!"https".equalsIgnoreCase(uri.getScheme())
+                || !"cdn.modrinth.com".equalsIgnoreCase(uri.getHost())) {
+            throw new IllegalArgumentException(
+                    "Datapack downloads must use https://cdn.modrinth.com");
+        }
+        return uri;
+    }
+
+    private static void requireSha512(Path file, String expected) throws Exception {
+        String actual = hash(file, "SHA-512");
+        if (!actual.equalsIgnoreCase(expected)) {
+            throw new IOException("SHA-512 mismatch for " + file.getFileName());
+        }
+    }
+
+    private static String hash(Path file, String algorithm) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance(algorithm);
+        byte[] buffer = new byte[8192];
+        try (InputStream input = Files.newInputStream(file)) {
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+        }
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     private static void validateDirectoryPack(Path pack) throws IOException {
@@ -418,5 +576,13 @@ public final class WorldManager {
     }
 
     private record Pack(String name, Path path, boolean directory) {
+    }
+
+    private record LockedDatapack(
+            String slug,
+            String versionId,
+            String version,
+            String targetFile,
+            String sha512) {
     }
 }

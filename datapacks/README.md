@@ -1,7 +1,9 @@
 # Datapacks
 
-Place datapack ZIP files or unpacked datapack directories here. Each pack must
-contain `pack.mcmeta` at its root.
+Locked Modrinth datapacks are downloaded here automatically from
+`../datapacks.lock` when the world manager runs. You can also place local
+datapack ZIP files or unpacked datapack directories here. Each pack must contain
+`pack.mcmeta` at its root.
 
 Before every server start, managed packs are validated and synchronized into
 the active world's `datapacks` directory. Removing a pack from this directory
@@ -26,9 +28,10 @@ The current server uses:
 - QSMP Rules: skips the night when 50% of online players are sleeping
 
 Exact Modrinth version IDs and SHA-512 hashes are recorded in
-`../datapacks.lock`. The numeric filename prefixes preserve the intended
-priority: Terratonic loads after Terralith. QSMP Rules is tracked directly as
-source files instead of as a downloaded ZIP.
+`../datapacks.lock`; missing locked ZIPs are fetched from Modrinth and verified
+before injection. The numeric filename prefixes preserve the intended priority:
+Terratonic loads after Terralith. QSMP Rules and compatibility overrides are
+tracked directly as source files instead of as downloaded ZIPs.
 
 These packs affect world generation. Update them only while the server is
 stopped and back up the world first. Do not remove Terralith or Terratonic from

@@ -24,7 +24,7 @@ load_config() {
   : "${MIN_MEMORY:=2G}"
   : "${MAX_MEMORY:=4G}"
   : "${SERVER_JAR:=server.jar}"
-  : "${PYTHON_CMD:=python3}"
+  : "${PYTHON_CMD:=uv}"
   : "${RESOURCE_PACK_PUBLIC_URL:=http://127.0.0.1:25566/qsmp-frontier-pack.zip}"
 
   JAR_PATH="$ROOT_DIR/$SERVER_JAR"
@@ -78,12 +78,30 @@ require_java() {
   check_java || fail "Install Java 25, then run this command again."
 }
 
+check_python_tool() {
+  if command -v "$PYTHON_CMD" >/dev/null 2>&1; then
+    printf 'Resource pack builder: %s (OK)\n' "$PYTHON_CMD"
+    return 0
+  fi
+  printf 'Resource pack builder: missing (%s)\n' "$PYTHON_CMD"
+  return 1
+}
+
+install_plugins() {
+  "$JAVA_CMD" "$ROOT_DIR/scripts/PluginManager.java" update
+}
+
 build_resource_pack() {
   command -v "$PYTHON_CMD" >/dev/null 2>&1 \
     || fail "Python command not found: $PYTHON_CMD"
   export RESOURCE_PACK_PUBLIC_URL
-  RESOURCE_PACK_PUBLIC_URL="$RESOURCE_PACK_PUBLIC_URL" \
-    "$PYTHON_CMD" "$ROOT_DIR/scripts/build_resource_pack.py" --apply-server-properties
+  if [[ "$(basename -- "$PYTHON_CMD")" == "uv" ]]; then
+    RESOURCE_PACK_PUBLIC_URL="$RESOURCE_PACK_PUBLIC_URL" \
+      "$PYTHON_CMD" run "$ROOT_DIR/scripts/build_resource_pack.py" --apply-server-properties
+  else
+    RESOURCE_PACK_PUBLIC_URL="$RESOURCE_PACK_PUBLIC_URL" \
+      "$PYTHON_CMD" "$ROOT_DIR/scripts/build_resource_pack.py" --apply-server-properties
+  fi
 }
 
 server_is_running() {
@@ -175,6 +193,8 @@ check_server() {
   printf 'Memory: %s to %s\n' "$MIN_MEMORY" "$MAX_MEMORY"
 
   check_java || status=1
+  check_python_tool || status=1
+  "$JAVA_CMD" "$ROOT_DIR/scripts/PluginManager.java" check || status=1
 
   if [[ -f "$JAR_PATH" ]]; then
     printf 'Server JAR: present (%s)\n' "$SERVER_JAR"
@@ -204,6 +224,7 @@ start_server() {
   require_java
   eula_is_accepted || fail "Read https://aka.ms/MinecraftEULA and set eula=true in eula.txt."
   server_is_running && fail "The server appears to already be running."
+  install_plugins
   build_resource_pack
   "$JAVA_CMD" "$ROOT_DIR/scripts/CustomPluginBuilder.java"
   "$JAVA_CMD" "$ROOT_DIR/scripts/WorldManager.java" inject

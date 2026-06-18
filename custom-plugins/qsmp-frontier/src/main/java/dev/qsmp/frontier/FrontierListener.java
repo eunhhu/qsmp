@@ -22,6 +22,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
@@ -48,6 +49,7 @@ final class FrontierListener implements Listener {
     private final DragonService dragons;
     private final FrontierGuideMenu guideMenu;
     private final CinematicService cinematics;
+    private final MobNameplateService nameplates;
 
     FrontierListener(
             QSMPFrontier plugin,
@@ -61,7 +63,8 @@ final class FrontierListener implements Listener {
             LegacyService legacies,
             DragonService dragons,
             FrontierGuideMenu guideMenu,
-            CinematicService cinematics) {
+            CinematicService cinematics,
+            MobNameplateService nameplates) {
         this.plugin = plugin;
         this.combat = combat;
         this.roles = roles;
@@ -74,6 +77,7 @@ final class FrontierListener implements Listener {
         this.dragons = dragons;
         this.guideMenu = guideMenu;
         this.cinematics = cinematics;
+        this.nameplates = nameplates;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -158,6 +162,13 @@ final class FrontierListener implements Listener {
         cinematics.onJoin(event.getPlayer());
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntitySpawn(EntitySpawnEvent event) {
+        if (event.getEntity() instanceof LivingEntity entity) {
+            nameplates.updateLater(entity);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onMenuClick(InventoryClickEvent event) {
         guideMenu.onClick(event);
@@ -214,9 +225,11 @@ final class FrontierListener implements Listener {
             return;
         }
         applyDamageWindow(entity);
+        nameplates.updateLater(entity);
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             if (entity.isValid()) {
                 applyDamageWindow(entity);
+                nameplates.update(entity);
             }
         });
     }

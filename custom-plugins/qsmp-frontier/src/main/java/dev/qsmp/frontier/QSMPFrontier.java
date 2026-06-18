@@ -12,6 +12,8 @@ public final class QSMPFrontier extends JavaPlugin {
     private ProgressionService progression;
     private DragonService dragons;
     private ResourcePackService resourcePacks;
+    private MobNameplateService nameplates;
+    private LandmarkService landmarks;
 
     @Override
     public void onEnable() {
@@ -27,6 +29,8 @@ public final class QSMPFrontier extends JavaPlugin {
         CompanionRoleService roles = new CompanionRoleService(this, keys, cinematics);
         LegacyService legacies = new LegacyService(this, keys, progression, items);
         dragons = new DragonService(this, keys, items, cinematics);
+        nameplates = new MobNameplateService(this);
+        landmarks = new LandmarkService(this);
         outposts = new OutpostService(this, keys, items, roles, progression, cinematics);
         WarfrontBuilder builder = new WarfrontBuilder(this);
         warfront = new WarfrontService(this, keys, items, builder, progression, legacies, cinematics);
@@ -35,11 +39,12 @@ public final class QSMPFrontier extends JavaPlugin {
                 new FrontierGuideMenu(items, warfront, expeditions, progression, legacies);
         FrontierListener listener = new FrontierListener(
                 this, combat, roles, items, outposts, warfront, expeditions,
-                progression, legacies, dragons, guideMenu, cinematics);
+                progression, legacies, dragons, guideMenu, cinematics, nameplates);
         FrontierCommand commandHandler = new FrontierCommand(
                 this, roles, items, outposts, warfront, expeditions, progression, legacies);
 
         Bukkit.getPluginManager().registerEvents(listener, this);
+        Bukkit.getPluginManager().registerEvents(landmarks, this);
         Bukkit.getPluginManager().registerEvents(enchantments, this);
         Bukkit.getPluginManager().registerEvents(resourcePacks, this);
         PluginCommand command = Objects.requireNonNull(
@@ -56,6 +61,7 @@ public final class QSMPFrontier extends JavaPlugin {
         legacyCommand.setTabCompleter(commandHandler);
 
         items.registerRecipes();
+        landmarks.load();
         progression.load();
         outposts.load();
         warfront.load();
@@ -76,6 +82,10 @@ public final class QSMPFrontier extends JavaPlugin {
                 40L,
                 40L);
         Bukkit.getScheduler().runTaskTimer(this, enchantments::tickOnlinePlayers, 80L, 200L);
+        long nameplateInterval = Math.max(
+                20L, getConfig().getLong("mob-nameplates.update-interval-ticks", 40L));
+        Bukkit.getScheduler().runTaskTimer(
+                this, nameplates::refreshLoaded, 60L, nameplateInterval);
         getLogger().info(
                 "Dynamic combat, tactical companions, outposts, warfront raids, "
                         + "ruin expeditions, survivor levels, legacy gear, and dragon raids are enabled.");
@@ -101,6 +111,9 @@ public final class QSMPFrontier extends JavaPlugin {
         }
         if (resourcePacks != null) {
             resourcePacks.stop();
+        }
+        if (landmarks != null) {
+            landmarks.shutdown();
         }
     }
 }

@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import com.google.common.collect.Multimap;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -32,8 +34,6 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 final class LegacyService {
     private static final EquipmentSlot[] RAID_XP_SLOTS = {
@@ -50,7 +50,8 @@ final class LegacyService {
     private final ProgressionService progression;
     private final FrontierItems items;
     private final NamespacedKey legacyAttackSpeedModifier;
-    private final NamespacedKey legacyMiningModifier;
+    private final NamespacedKey legacyMiningEfficiencyModifier;
+    private final NamespacedKey legacyBlockBreakSpeedModifier;
 
     LegacyService(
             QSMPFrontier plugin,
@@ -62,7 +63,8 @@ final class LegacyService {
         this.progression = progression;
         this.items = items;
         this.legacyAttackSpeedModifier = new NamespacedKey(plugin, "legacy_attack_speed");
-        this.legacyMiningModifier = new NamespacedKey(plugin, "legacy_mining_efficiency");
+        this.legacyMiningEfficiencyModifier = new NamespacedKey(plugin, "legacy_mining_efficiency");
+        this.legacyBlockBreakSpeedModifier = new NamespacedKey(plugin, "legacy_block_break_speed");
     }
 
     boolean command(CommandSender sender, String[] args) {
@@ -163,7 +165,7 @@ final class LegacyService {
     }
 
     void onBlockDamage(BlockDamageEvent event) {
-        applyHeldEffects(event.getPlayer());
+        ensureInventory(event.getPlayer());
     }
 
     void onItemDamage(PlayerItemDamageEvent event) {
@@ -251,7 +253,6 @@ final class LegacyService {
 
     void tickPlayer(Player player) {
         ensureInventory(player);
-        applyHeldEffects(player);
     }
 
     List<String> statusLore(Player player) {
@@ -684,7 +685,9 @@ final class LegacyService {
 
     private void applyAttributeModifiers(ItemStack item, ItemMeta meta, PersistentDataContainer data) {
         removeLegacyModifier(meta, Attribute.ATTACK_SPEED, legacyAttackSpeedModifier);
-        removeLegacyModifier(meta, Attribute.MINING_EFFICIENCY, legacyMiningModifier);
+        removeLegacyModifier(meta, Attribute.MINING_EFFICIENCY, legacyMiningEfficiencyModifier);
+        removeLegacyModifier(meta, Attribute.BLOCK_BREAK_SPEED, legacyBlockBreakSpeedModifier);
+        restoreVanillaMainHandModifiers(item, meta);
         double attackSpeed = attackSpeedBonus(item, data);
         if ((meleeLike(item) || toolLike(item)) && attackSpeed > 0.0) {
             meta.addAttributeModifier(
@@ -698,13 +701,44 @@ final class LegacyService {
         double miningSpeed = miningSpeedBonus(item, data);
         if (toolLike(item) && miningSpeed > 0.0) {
             meta.addAttributeModifier(
-                    Attribute.MINING_EFFICIENCY,
+                    Attribute.BLOCK_BREAK_SPEED,
                     new AttributeModifier(
-                            legacyMiningModifier,
+                            legacyBlockBreakSpeedModifier,
                             miningSpeed,
-                            AttributeModifier.Operation.ADD_SCALAR,
+                            AttributeModifier.Operation.ADD_NUMBER,
                             EquipmentSlotGroup.MAINHAND));
         }
+    }
+
+    private void restoreVanillaMainHandModifiers(ItemStack item, ItemMeta meta) {
+        if (!meleeLike(item) && !toolLike(item)) {
+            return;
+        }
+        Multimap<Attribute, AttributeModifier> defaults =
+                item.getType().getDefaultAttributeModifiers(EquipmentSlot.HAND);
+        for (Map.Entry<Attribute, AttributeModifier> entry : defaults.entries()) {
+            Attribute attribute = entry.getKey();
+            AttributeModifier modifier = entry.getValue();
+            if (!hasModifierKey(meta, attribute, modifier.getKey())) {
+                meta.addAttributeModifier(attribute, modifier);
+            }
+        }
+    }
+
+    private boolean hasModifierKey(
+            ItemMeta meta,
+            Attribute attribute,
+            NamespacedKey modifierKey) {
+        Collection<AttributeModifier> modifiers = meta.getAttributeModifiers(attribute);
+        if (modifiers == null) {
+            return false;
+        }
+        for (AttributeModifier modifier : modifiers) {
+            if (modifierKey.equals(modifier.getKey())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void removeLegacyModifier(
@@ -720,29 +754,6 @@ final class LegacyService {
                 meta.removeAttributeModifier(attribute, modifier);
             }
         }
-    }
-
-    private void applyHeldEffects(Player player) {
-        ItemStack held = player.getInventory().getItemInMainHand();
-        if (!toolLike(held) || !hasLegacy(held)) {
-            return;
-        }
-        double mining = miningSpeedBonus(held);
-        if (mining <= 0.0) {
-            return;
-        }
-        int amplifier = Math.min(2, Math.max(0, (int) Math.ceil(mining / 0.20) - 1));
-        PotionEffect current = player.getPotionEffect(PotionEffectType.HASTE);
-        if (current != null && current.getAmplifier() >= amplifier && current.getDuration() > 30) {
-            return;
-        }
-        player.addPotionEffect(new PotionEffect(
-                PotionEffectType.HASTE,
-                80,
-                amplifier,
-                true,
-                false,
-                true));
     }
 
     private void playStrikeEffect(
