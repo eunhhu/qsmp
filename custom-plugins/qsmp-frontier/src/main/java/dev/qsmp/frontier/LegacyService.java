@@ -695,17 +695,24 @@ final class LegacyService {
                     new AttributeModifier(
                             legacyAttackSpeedModifier,
                             attackSpeed,
-                            AttributeModifier.Operation.ADD_SCALAR,
+                            AttributeModifier.Operation.MULTIPLY_SCALAR_1,
                             EquipmentSlotGroup.MAINHAND));
         }
         double miningSpeed = miningSpeedBonus(item, data);
         if (toolLike(item) && miningSpeed > 0.0) {
             meta.addAttributeModifier(
+                    Attribute.MINING_EFFICIENCY,
+                    new AttributeModifier(
+                            legacyMiningEfficiencyModifier,
+                            FrontierMath.legacyMiningEfficiencyBonus(miningSpeed),
+                            AttributeModifier.Operation.ADD_NUMBER,
+                            EquipmentSlotGroup.MAINHAND));
+            meta.addAttributeModifier(
                     Attribute.BLOCK_BREAK_SPEED,
                     new AttributeModifier(
                             legacyBlockBreakSpeedModifier,
                             miningSpeed,
-                            AttributeModifier.Operation.ADD_NUMBER,
+                            AttributeModifier.Operation.MULTIPLY_SCALAR_1,
                             EquipmentSlotGroup.MAINHAND));
         }
     }
@@ -989,12 +996,13 @@ final class LegacyService {
         if (level <= 0) {
             return 0.0;
         }
-        return Math.max(0, level - 1)
-                        * plugin.getConfig().getDouble("legacy.weapon-damage-per-level", 0.04)
-                + legacyRefine(data, item)
-                        * plugin.getConfig().getDouble("legacy.refine.weapon-damage-per-refine", 0.05)
-                + legacyAwakened(data, item)
-                        * plugin.getConfig().getDouble("legacy.awakening.weapon-damage", 0.15);
+        return FrontierMath.legacyBonus(
+                level,
+                legacyRefine(data, item),
+                legacyAwakened(data, item),
+                plugin.getConfig().getDouble("legacy.weapon-damage-per-level", 0.04),
+                plugin.getConfig().getDouble("legacy.refine.weapon-damage-per-refine", 0.05),
+                plugin.getConfig().getDouble("legacy.awakening.weapon-damage", 0.15));
     }
 
     private double attackSpeedBonus(ItemStack item) {
@@ -1012,12 +1020,13 @@ final class LegacyService {
         if (level <= 0) {
             return 0.0;
         }
-        return Math.max(0, level - 1)
-                        * plugin.getConfig().getDouble("legacy.attack-speed-per-level", 0.012)
-                + legacyRefine(data, item)
-                        * plugin.getConfig().getDouble("legacy.refine.attack-speed-per-refine", 0.02)
-                + legacyAwakened(data, item)
-                        * plugin.getConfig().getDouble("legacy.awakening.attack-speed", 0.08);
+        return FrontierMath.legacyBonus(
+                level,
+                legacyRefine(data, item),
+                legacyAwakened(data, item),
+                plugin.getConfig().getDouble("legacy.attack-speed-per-level", 0.012),
+                plugin.getConfig().getDouble("legacy.refine.attack-speed-per-refine", 0.018),
+                plugin.getConfig().getDouble("legacy.awakening.attack-speed", 0.05));
     }
 
     private double miningSpeedBonus(ItemStack item) {
@@ -1035,12 +1044,13 @@ final class LegacyService {
         if (level <= 0 || !toolLike(item)) {
             return 0.0;
         }
-        return Math.max(0, level - 1)
-                        * plugin.getConfig().getDouble("legacy.mining-speed-per-level", 0.035)
-                + legacyRefine(data, item)
-                        * plugin.getConfig().getDouble("legacy.refine.mining-speed-per-refine", 0.05)
-                + legacyAwakened(data, item)
-                        * plugin.getConfig().getDouble("legacy.awakening.mining-speed", 0.15);
+        return FrontierMath.legacyBonus(
+                level,
+                legacyRefine(data, item),
+                legacyAwakened(data, item),
+                plugin.getConfig().getDouble("legacy.mining-speed-per-level", 0.008),
+                plugin.getConfig().getDouble("legacy.refine.mining-speed-per-refine", 0.020),
+                plugin.getConfig().getDouble("legacy.awakening.mining-speed", 0.07));
     }
 
     private double durabilitySaveChance(ItemStack item) {
@@ -1058,12 +1068,13 @@ final class LegacyService {
         if (level <= 0 || item.getType().getMaxDurability() <= 0) {
             return 0.0;
         }
-        double chance = Math.max(0, level - 1)
-                        * plugin.getConfig().getDouble("legacy.durability-save-per-level", 0.015)
-                + legacyRefine(data, item)
-                        * plugin.getConfig().getDouble("legacy.refine.durability-save-per-refine", 0.04)
-                + legacyAwakened(data, item)
-                        * plugin.getConfig().getDouble("legacy.awakening.durability-save", 0.12);
+        double chance = FrontierMath.legacyBonus(
+                level,
+                legacyRefine(data, item),
+                legacyAwakened(data, item),
+                plugin.getConfig().getDouble("legacy.durability-save-per-level", 0.015),
+                plugin.getConfig().getDouble("legacy.refine.durability-save-per-refine", 0.04),
+                plugin.getConfig().getDouble("legacy.awakening.durability-save", 0.12));
         return Math.min(plugin.getConfig().getDouble("legacy.durability-save-cap", 0.55), chance);
     }
 
@@ -1082,12 +1093,13 @@ final class LegacyService {
         if (level <= 0) {
             return 0.0;
         }
-        return Math.max(0, level - 1)
-                        * plugin.getConfig().getDouble("legacy.armor-reduction-per-level", 0.01)
-                + legacyRefine(data, item)
-                        * plugin.getConfig().getDouble("legacy.refine.armor-reduction-per-refine", 0.012)
-                + legacyAwakened(data, item)
-                        * plugin.getConfig().getDouble("legacy.awakening.armor-reduction", 0.05);
+        return FrontierMath.legacyBonus(
+                level,
+                legacyRefine(data, item),
+                legacyAwakened(data, item),
+                plugin.getConfig().getDouble("legacy.armor-reduction-per-level", 0.01),
+                plugin.getConfig().getDouble("legacy.refine.armor-reduction-per-refine", 0.012),
+                plugin.getConfig().getDouble("legacy.awakening.armor-reduction", 0.05));
     }
 
     private int legacyRefine(PersistentDataContainer data, ItemStack fallback) {

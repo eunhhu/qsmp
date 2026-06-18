@@ -65,10 +65,11 @@ final class FrontierGuideMenu {
                 Material.ENCHANTED_BOOK,
                 ChatColor.AQUA + "Enchanting & Anvil",
                 List.of(
-                        ChatColor.GRAY + "Most scalable enchantments merge to Lv.10.",
-                        ChatColor.GRAY + "Mending, Infinity, Flame, curses, and",
-                        ChatColor.GRAY + "other single-rank enchants stay Lv.1.",
-                        ChatColor.DARK_GRAY + "Anvil repair-cost ceiling is unlocked.")));
+                        ChatColor.GRAY + "Main enchantments merge to Lv.10.",
+                        ChatColor.GRAY + "Utility sub-options cap at Lv.5.",
+                        ChatColor.GRAY + "Vanilla single-rank enchants stay Lv.1.",
+                        ChatColor.DARK_GRAY + "Anvil work only charges on real changes.",
+                        ChatColor.DARK_GRAY + "Required level is capped at 38.")));
         inventory.setItem(30, icon(
                 Material.BARREL,
                 ChatColor.YELLOW + "Outposts",
@@ -126,10 +127,18 @@ final class FrontierGuideMenu {
                 player.closeInventory();
                 player.sendTitle(
                         ChatColor.AQUA + "ENCHANTING",
-                        ChatColor.GRAY + "Scale normal enchantments to Lv.10 through anvils",
+                        ChatColor.GRAY + "Main Lv.10, utility Lv.5, single Lv.1",
                         6, 52, 12);
                 player.sendMessage(ChatColor.AQUA
-                        + "Enchanting rules: scalable enchantments can merge to Lv.10. Single-rank enchants like Mending, Infinity, Flame, Silk Touch, and curses remain Lv.1. Anvil cost limits are unlocked.");
+                        + "Enchanting caps: Protection family, Sharpness, Smite, Bane, Efficiency, Unbreaking, and Power can merge to Lv.10.");
+                player.sendMessage(ChatColor.GRAY
+                        + "Utility caps: Fortune, Looting, Fire Aspect, Knockback, Feather Falling, Thorns, Trident/Crossbow/fishing/mobility enchants cap at Lv.5.");
+                player.sendMessage(ChatColor.GRAY
+                        + "Single caps: Mending, Infinity, Flame, Silk Touch, Aqua Affinity, Channeling, Multishot, and curses stay Lv.1.");
+                player.sendMessage(ChatColor.DARK_GRAY
+                        + "Notes: Density = mace fall-smash damage, Breach = mace armor bypass, Wind Burst = upward burst after smash, Lunge = spear forward dash.");
+                player.sendMessage(ChatColor.DARK_GRAY
+                        + "Anvil cost is charged only for real changes and is capped at 38 levels.");
                 player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.7f, 1.2f);
             }
             case 30 -> {
