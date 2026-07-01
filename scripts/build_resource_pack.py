@@ -46,8 +46,20 @@ PACK_URL = os.environ.get(
         "http://127.0.0.1:25566/qsmp-frontier-pack.zip",
     ),
 )
+PACK_ENABLED = os.environ.get("RESOURCE_PACK_ENABLED", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "enabled",
+}
+PACK_REQUIRED = os.environ.get("RESOURCE_PACK_REQUIRED", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "required",
+}
 PROMPT = (
-    "QSMP Frontier required pack: realistic frontier textures, cinematic UI, "
+    "QSMP Frontier optional pack: realistic frontier textures, cinematic UI, "
     "raid/dragon sound layers."
 )
 
@@ -60,6 +72,11 @@ def main() -> None:
         help="Update server.properties with the generated URL and SHA-1.",
     )
     args = parser.parse_args()
+
+    if args.apply_server_properties and not PACK_ENABLED:
+        disable_server_properties()
+        print("Resource pack disabled; cleared server.properties resource pack fields.")
+        return
 
     rebuild_stage()
     write_pack_metadata()
@@ -440,15 +457,32 @@ def build_zip() -> None:
 
 
 def update_server_properties(sha1: str) -> None:
+    write_server_properties(
+        {
+            "require-resource-pack": "true" if PACK_REQUIRED else "false",
+            "resource-pack": PACK_URL,
+            "resource-pack-id": str(PACK_ID),
+            "resource-pack-prompt": json.dumps({"text": PROMPT}, separators=(",", ":")),
+            "resource-pack-sha1": sha1,
+        }
+    )
+
+
+def disable_server_properties() -> None:
+    write_server_properties(
+        {
+            "require-resource-pack": "false",
+            "resource-pack": "",
+            "resource-pack-id": "",
+            "resource-pack-prompt": "",
+            "resource-pack-sha1": "",
+        }
+    )
+
+
+def write_server_properties(replacements: dict[str, str]) -> None:
     path = ROOT / "server.properties"
     lines = path.read_text(encoding="utf-8").splitlines()
-    replacements = {
-        "require-resource-pack": "true",
-        "resource-pack": PACK_URL,
-        "resource-pack-id": str(PACK_ID),
-        "resource-pack-prompt": json.dumps({"text": PROMPT}, separators=(",", ":")),
-        "resource-pack-sha1": sha1,
-    }
     seen: set[str] = set()
     next_lines: list[str] = []
     for line in lines:

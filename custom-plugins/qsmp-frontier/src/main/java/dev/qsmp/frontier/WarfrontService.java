@@ -122,9 +122,13 @@ final class WarfrontService {
     void guide(Player player) {
         if (center == null) {
             ensureEncounter();
+            if (center == null) {
+                player.sendMessage(ChatColor.YELLOW
+                        + "The compass is searching while the battlefield emerges.");
+                return;
+            }
             player.sendMessage(ChatColor.YELLOW
-                    + "The compass is searching while the battlefield emerges.");
-            return;
+                    + "The compass charts a battlefield beyond the frontier.");
         }
         if (!player.getWorld().equals(center.getWorld())) {
             player.sendMessage(ChatColor.YELLOW

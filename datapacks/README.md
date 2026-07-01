@@ -19,13 +19,21 @@ The current server uses:
 - Terralith 2.6.2: expanded Overworld biomes and features
 - Terratonic 3.0.22: Tectonic terrain shaping adapted for Terralith
 - Continents 1.1.13: ocean-separated large landmasses for long expeditions
+- Incendium 5.4.12: overhauled Nether biomes, structures, and progression
+- Nether Expanse Incendium 1.0: Incendium-compatible open Nether ceiling exploration
 - Dungeons and Taverns 5.2.0: dungeons, taverns, and adventure structures
 - Explorify 1.6.5: additional vanilla-style exploration structures
 - Structory 1.3.15: atmospheric ruins, towers, and settlements
 - Nullscape 1.2.18: overhauled End terrain
-- True Ending 1.1.4d: overhauled Ender Dragon fight and finale
+- True Ending 1.1.4d: Ender Dragon phases, particles, attacks, and final hit
 - True Ending 26 Compat: fixes 26.1 `time_check` predicate schema for True Ending
 - QSMP Rules: skips the night when 50% of online players are sleeping
+
+Stellarity is intentionally not installed because its full datapack also changes
+dragon functions, loot, advancements, and boss mechanics. That conflicts with the
+server's True Ending boss-fight requirement. The official True Ending music pack
+is served as an optional server resource pack so failed downloads do not block
+joining.
 
 Exact Modrinth version IDs and SHA-512 hashes are recorded in
 `../datapacks.lock`; missing locked ZIPs are fetched from Modrinth and verified

@@ -95,23 +95,21 @@ cinematics:
 서버 설정:
 
 ```properties
-require-resource-pack=true
-resource-pack=http://127.0.0.1:25566/qsmp-frontier-pack.zip
-resource-pack-sha1=<자동 생성 SHA1>
+require-resource-pack=false
+resource-pack=https://cdn.modrinth.com/data/ZltblCOt/versions/uTOUpxTI/true-ending-dragon-music-v1.zip
+resource-pack-sha1=93aaaacdde99601ad519e1970255e52be8a09b0e
 ```
 
 동작:
 
-- `./server.sh start` 실행 시 `scripts/build_resource_pack.py`가 zip과 SHA1을 생성합니다.
-- `QSMPFrontier`가 포트 `25566`에서 pack zip을 HTTP로 서빙합니다.
-- 접속한 플레이어에게 같은 pack을 required로 다시 전송하고, 거부/다운로드 실패 시 퇴장시킵니다.
+- `./server.sh start`는 generated QSMP pack을 기본으로 빌드하지 않습니다.
+- 서버는 True Ending 공식 음악팩을 optional pack으로 제안합니다.
+- 거부/다운로드 실패 시에도 접속은 유지됩니다.
 
 주의:
 
-- `127.0.0.1`은 서버 PC에서만 유효합니다.
-- 친구들이 외부에서 접속한다면 [server.env](../server.env)의 `RESOURCE_PACK_PUBLIC_URL`을 서버 공인 IP/도메인으로 바꿉니다.
-- 예: `http://your-domain.example:25566/qsmp-frontier-pack.zip`
-- 공유기/방화벽에서 TCP `25566`도 열어야 합니다.
+- True Ending 음악팩은 Modrinth CDN URL과 SHA1을 [server.properties](../server.properties)에 고정합니다.
+- generated QSMP pack을 다시 쓰려면 [server.env](../server.env)의 `RESOURCE_PACK_ENABLED=true`와 공개 URL을 별도로 설정합니다.
 
 ## QSMPFrontier 전투
 
