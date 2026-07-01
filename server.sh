@@ -25,6 +25,8 @@ load_config() {
   : "${MAX_MEMORY:=4G}"
   : "${SERVER_JAR:=server.jar}"
   : "${PYTHON_CMD:=uv}"
+  : "${RESOURCE_PACK_ENABLED:=false}"
+  : "${RESOURCE_PACK_REQUIRED:=false}"
   : "${RESOURCE_PACK_PUBLIC_URL:=http://127.0.0.1:25566/qsmp-frontier-pack.zip}"
 
   JAR_PATH="$ROOT_DIR/$SERVER_JAR"
@@ -79,6 +81,10 @@ require_java() {
 }
 
 check_python_tool() {
+  if ! resource_pack_enabled; then
+    printf 'Generated QSMP resource pack: disabled\n'
+    return 0
+  fi
   if command -v "$PYTHON_CMD" >/dev/null 2>&1; then
     printf 'Resource pack builder: %s (OK)\n' "$PYTHON_CMD"
     return 0
@@ -87,19 +93,36 @@ check_python_tool() {
   return 1
 }
 
+resource_pack_enabled() {
+  case "$RESOURCE_PACK_ENABLED" in
+    1|true|TRUE|yes|YES|enabled|ENABLED) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 install_plugins() {
   "$JAVA_CMD" "$ROOT_DIR/scripts/PluginManager.java" update
 }
 
 build_resource_pack() {
+  if ! resource_pack_enabled; then
+    printf 'Resource pack: disabled; skipping generated pack build.\n'
+    return 0
+  fi
   command -v "$PYTHON_CMD" >/dev/null 2>&1 \
     || fail "Python command not found: $PYTHON_CMD"
+  export RESOURCE_PACK_ENABLED
   export RESOURCE_PACK_PUBLIC_URL
+  export RESOURCE_PACK_REQUIRED
   if [[ "$(basename -- "$PYTHON_CMD")" == "uv" ]]; then
+    RESOURCE_PACK_ENABLED="$RESOURCE_PACK_ENABLED" \
     RESOURCE_PACK_PUBLIC_URL="$RESOURCE_PACK_PUBLIC_URL" \
+    RESOURCE_PACK_REQUIRED="$RESOURCE_PACK_REQUIRED" \
       "$PYTHON_CMD" run "$ROOT_DIR/scripts/build_resource_pack.py" --apply-server-properties
   else
+    RESOURCE_PACK_ENABLED="$RESOURCE_PACK_ENABLED" \
     RESOURCE_PACK_PUBLIC_URL="$RESOURCE_PACK_PUBLIC_URL" \
+    RESOURCE_PACK_REQUIRED="$RESOURCE_PACK_REQUIRED" \
       "$PYTHON_CMD" "$ROOT_DIR/scripts/build_resource_pack.py" --apply-server-properties
   fi
 }

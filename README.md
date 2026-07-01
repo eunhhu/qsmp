@@ -155,13 +155,20 @@ RESOURCE_PACK_PUBLIC_URL=http://your-domain.example:25566/qsmp-frontier-pack.zip
 
 - `Terralith + Terratonic`: 약 100개 오버월드 바이옴과 거대한 산맥/협곡
 - `Continents`: 대륙 사이를 넓은 바다로 분리해 장거리 탐험과 원정 강화
+- `Incendium`: 네더 바이옴, 구조물, 전리품, 진행 요소 개편
+- `Nether Expanse Incendium`: Incendium 위에 네더 천장 위 광활한 탐험 공간 추가
 - `Dungeons and Taverns`: 던전, 주점, 전투·탐험 구조물
 - `Explorify`: 바닐라 분위기의 추가 탐험 구조물
 - `Structory`: 폐허, 탑, 정착지 등 풍경 중심 구조물 추가
 - `Nullscape`: 엔드 지형과 바이옴 전면 개편
-- `True Ending`: 엔더 드래곤 전투와 엔딩 연출 개편
+- `True Ending`: 엔더 드래곤 전투, 페이즈, 파티클, 최종 타격 연출 개편
 - `True Ending 26 Compat`: Minecraft 26.1 predicate 호환 패치
 - `QSMP Rules`: 접속 인원의 50%가 잠들면 밤을 넘기는 영구 QoL 규칙
+
+`Stellarity` 전체팩은 드래곤전, loot, advancement, function을 같이 바꿔
+True Ending 보스 연출과 충돌하므로 현재 구성에서는 제외합니다. True
+Ending 공식 음악 리소스팩은 서버 리소스팩으로 제안하지만, 다운로드
+실패로 접속이 막히지 않도록 필수로 강제하지 않습니다.
 
 정확한 버전과 해시는 [datapacks.lock](datapacks.lock)에 고정합니다.
 지형 팩은 생성된 월드에서 제거하면 월드가 손상될 수 있으므로, 업데이트나

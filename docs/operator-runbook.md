@@ -48,7 +48,7 @@ tcp list
 
 기대:
 
-- `datapack list enabled`: Terralith, Terratonic, Continents, Dungeons and Taverns, Explorify, Structory, Nullscape, True Ending, True Ending 26 Compat, QSMP Rules 표시
+- `datapack list enabled`: Terralith, Terratonic, Continents, Incendium, Nether Expanse Incendium, Dungeons and Taverns, Explorify, Structory, Nullscape, True Ending, True Ending 26 Compat, QSMP Rules 표시
 - `frontier status`: 전장 상태와 거점 수 표시
 - `version QSMPFrontier`: `1.4.0` 및 cinematic raids/dragon raids 포함 설명 표시
 - `survivor`: 플레이어만 실행 가능. 콘솔에서는 `Players only.`가 정상
@@ -57,7 +57,7 @@ tcp list
 
 플레이어 GUI QA:
 
-- `QSMP Codex` 웅크린 우클릭: `Battle Readiness`, `Warfront`, `Sealed Ruin`, `Survivor Level`, `Legacy Gear`, `Enchanting & Anvil`, `Outposts`, `End Raid`, `Required Resource Pack` 아이콘 표시
+- `QSMP Codex` 웅크린 우클릭: `Battle Readiness`, `Warfront`, `Sealed Ruin`, `Survivor Level`, `Legacy Gear`, `Enchanting & Anvil`, `Outposts`, `End Raid`, `Optional Dragon Music` 아이콘 표시
 - `/survivor`: `XP Routes`와 `Battle Readout` 아이콘 표시
 - `/legacy`: 들고 있는 장비의 레벨/XP/보너스/Refine/Awaken/Transfer 표시
 
@@ -307,17 +307,16 @@ uv run scripts/build_resource_pack.py --apply-server-properties
 
 결과:
 
-- `resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.zip`
-- `resourcepacks/qsmp-frontier/build/qsmp-frontier-pack.sha1`
-- [server.properties](../server.properties)의 `require-resource-pack=true`
-- [server.properties](../server.properties)의 `resource-pack-prompt={"text":"..."}`
-- [server.properties](../server.properties)의 `resource-pack-sha1=<현재 SHA1>`
+- generated QSMP pack은 기본 비활성 상태입니다.
+- [server.properties](../server.properties)의 `require-resource-pack=false`
+- [server.properties](../server.properties)의 `resource-pack-prompt={"text":"True Ending ..."}`
+- [server.properties](../server.properties)의 `resource-pack-sha1=<True Ending music SHA1>`
 
 서버 시작:
 
-- `./server.sh start`는 리소스팩을 자동 빌드하고 SHA1을 갱신합니다.
-- `QSMPFrontier`는 `resource-pack.port` 기본 `25566`에서 zip을 HTTP로 서빙합니다.
-- 접속 플레이어에게 required pack을 전송합니다.
+- `./server.sh start`는 generated QSMP pack을 빌드하지 않습니다.
+- 접속 플레이어에게 True Ending 공식 음악팩을 optional pack으로 제안합니다.
+- 다운로드 실패나 거절로 접속을 막지 않습니다.
 
 외부 접속 주의:
 

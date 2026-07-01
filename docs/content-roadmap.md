@@ -36,7 +36,7 @@
 - Codex 일반 우클릭 책 안내
 - Codex 웅크린 우클릭 아이콘 GUI
 - Codex `Battle Readiness`로 Survivor/Legacy 상태를 한 화면 요약
-- Codex `Enchanting & Anvil`/`Required Resource Pack` 안내 추가
+- Codex `Enchanting & Anvil`/`Optional Dragon Music` 안내 추가
 - 커스텀 제작법 자동 해금
 - Survivor Core `XP Routes`/`Battle Readout` 정보 패널
 - Survivor XP, Might 추가 피해, Endurance 피해 감소 인게임 피드백
@@ -227,7 +227,7 @@ XP를 너무 많이 주면 안 되는 곳:
 기본 강화 가능성 테스트는 서버 기동과 데이터팩 활성 확인까지 완료했습니다.
 `QSMPFrontier` 커스텀 강화 레이어 MVP도 적용했습니다.
 
-추천: `True Ending`을 먼저 붙이고, 부족한 난이도는 커스텀 레이어로 강화합니다.
+추천: `True Ending`을 보스전 기준으로 유지하고, 부족한 난이도는 커스텀 레이어로 강화합니다.
 
 근거:
 

@@ -65,7 +65,7 @@ final class DragonService {
             return;
         }
         configureDragon(dragon);
-        pruneBrokenResonance();
+        pruneBrokenResonance(dragon);
         tickResonanceParticles();
         maybeStartPhase(dragon);
         tickMinions(dragon);
@@ -116,13 +116,7 @@ final class DragonService {
                 + event.getPlayer().getName() + " shattered a Dragon Resonance Stone. "
                 + ChatColor.GRAY + resonanceBlocks.size() + " remain.");
         if (resonanceBlocks.isEmpty()) {
-            Bukkit.broadcastMessage(ChatColor.GOLD
-                    + "The Ender Dragon's resonance shield collapses.");
-            event.getPlayer().getWorld().playSound(
-                    event.getPlayer().getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.8f, 0.9f);
-            cinematics.onDragonShieldCollapsed(main);
-            nextResonanceAllowedAt = System.currentTimeMillis() + Math.max(0L, plugin.getConfig()
-                    .getLong("dragon.resonance-collapse-grace-ticks", 600L)) * 50L;
+            collapseResonance(main);
         }
     }
 
@@ -332,11 +326,19 @@ final class DragonService {
         }
     }
 
-    private void pruneBrokenResonance() {
+    private void pruneBrokenResonance(EnderDragon dragon) {
+        boolean hadResonance = !resonanceBlocks.isEmpty();
         resonanceBlocks.removeIf(location -> {
             Block block = location.getBlock();
-            return block.getType() != Material.CRYING_OBSIDIAN;
+            if (block.getType() == Material.CRYING_OBSIDIAN) {
+                return false;
+            }
+            clearResonanceStone(location);
+            return true;
         });
+        if (hadResonance && resonanceBlocks.isEmpty()) {
+            collapseResonance(dragon.getLocation());
+        }
     }
 
     private Location resonanceMainBlock(Block block) {
@@ -389,6 +391,16 @@ final class DragonService {
             }
         }
         resonanceBlocks.clear();
+    }
+
+    private void collapseResonance(Location location) {
+        Bukkit.broadcastMessage(ChatColor.GOLD
+                + "The Ender Dragon's resonance shield collapses.");
+        location.getWorld().playSound(
+                location, Sound.ENTITY_ENDER_DRAGON_GROWL, 1.8f, 0.9f);
+        cinematics.onDragonShieldCollapsed(location);
+        nextResonanceAllowedAt = System.currentTimeMillis() + Math.max(0L, plugin.getConfig()
+                .getLong("dragon.resonance-collapse-grace-ticks", 600L)) * 50L;
     }
 
     private void clearResonanceStone(Location location) {

@@ -37,7 +37,7 @@ QSMP는 바닐라 클라이언트로 접속하지만 서버 전용 리소스팩�
 - `Enchanting & Anvil`: 10레벨 인챈트와 단일성 인챈트 규칙 확인
 - `Outposts`: 거점 제작법 해금과 배치 힌트
 - `End Raid`: True Ending + QSMP 공명석 공략 요약
-- `Required Resource Pack`: 전용 UI/소리/아이템팩 안내
+- `Optional Dragon Music`: True Ending 보스 음악팩 안내
 
 Codex를 잃어버리면 다시 만들 수 있습니다.
 

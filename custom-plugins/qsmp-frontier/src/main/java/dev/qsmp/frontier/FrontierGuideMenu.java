@@ -85,10 +85,10 @@ final class FrontierGuideMenu {
                         ChatColor.DARK_GRAY + "Dragon Heart and Void Scale feed Legacy growth.")));
         inventory.setItem(34, icon(
                 Material.AMETHYST_CLUSTER,
-                ChatColor.LIGHT_PURPLE + "Required Resource Pack",
+                ChatColor.LIGHT_PURPLE + "Optional Dragon Music",
                 List.of(
-                        ChatColor.GRAY + "Custom UI, sprites, and cinematic cues.",
-                        ChatColor.DARK_GRAY + "Keep server resource pack enabled.")));
+                        ChatColor.GRAY + "True Ending official boss music pack.",
+                        ChatColor.DARK_GRAY + "Recommended, but joining is not blocked.")));
         inventory.setItem(49, icon(
                 Material.BARRIER,
                 ChatColor.RED + "Close",
